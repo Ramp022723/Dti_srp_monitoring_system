@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/product_model.dart';
 
 class ProductApiService {
-  static const String _baseUrl = 'http://localhost/api/product_price_management.php';
+  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/product_price_management.php';
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -25,36 +25,43 @@ class ProductApiService {
     int limit = 20,
   }) async {
     try {
-      Map<String, String> queryParams = {
-        'action': 'get_products',
-        'sort': sortBy,
-        'order': sortOrder,
+      // Align query parameters with live API
+      final Map<String, String> queryParams = {
+        'sort_by': sortBy,
+        'sort_order': sortOrder,
         'page': page.toString(),
-        'limit': limit.toString(),
+        'per_page': limit.toString(),
       };
 
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
-      if (categoryId != null) queryParams['category'] = categoryId.toString();
+      if (categoryId != null) queryParams['category_id'] = categoryId.toString();
       if (priceMin != null) queryParams['price_min'] = priceMin.toString();
       if (priceMax != null) queryParams['price_max'] = priceMax.toString();
-      if (folderId != null) queryParams['folder'] = folderId.toString();
-      if (mainFolderId != null) queryParams['main_folder'] = mainFolderId.toString();
-      if (subFolderId != null) queryParams['sub_folder'] = subFolderId.toString();
+      if (folderId != null) queryParams['folder_id'] = folderId.toString();
+      if (mainFolderId != null) queryParams['main_folder_id'] = mainFolderId.toString();
+      if (subFolderId != null) queryParams['sub_folder_id'] = subFolderId.toString();
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      // Use Accept only for GET; omit JSON Content-Type to avoid 405s on some servers
+      final response = await http.get(uri, headers: const {'Accept': 'application/json'});
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['products'] as List)
-              .map((product) => Product.fromJson(product))
+        if (data['success'] == true) {
+          // API may return products under data.products, or at root as products
+          final List<dynamic> productsList =
+              (data['data'] != null && data['data']['products'] is List)
+                  ? (data['data']['products'] as List)
+                  : (data['products'] as List? ?? <dynamic>[]);
+          return productsList
+              .map((product) => Product.fromJson(product as Map<String, dynamic>))
               .toList();
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch products');
         }
       } else {
-        throw Exception('Failed to fetch products: ${response.statusCode}');
+        final body = response.body.isNotEmpty ? response.body : '';
+        throw Exception('Failed to fetch products: ${response.statusCode} ${body}');
       }
     } catch (e) {
       throw Exception('Error fetching products: $e');

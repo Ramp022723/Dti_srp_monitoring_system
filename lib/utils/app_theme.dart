@@ -72,13 +72,13 @@ class AppTheme {
       ),
       
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: const CardThemeData(
         color: lightCardColor,
         elevation: AppConstants.cardElevation,
+        margin: EdgeInsets.all(AppConstants.smallPadding),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          borderRadius: BorderRadius.all(Radius.circular(AppConstants.borderRadius)),
         ),
-        margin: const EdgeInsets.all(AppConstants.smallPadding),
       ),
       
       // Elevated Button Theme
@@ -331,13 +331,13 @@ class AppTheme {
       ),
       
       // Card Theme
-      cardTheme: CardTheme(
+      cardTheme: const CardThemeData(
         color: darkCardColor,
         elevation: AppConstants.cardElevation,
+        margin: EdgeInsets.all(AppConstants.smallPadding),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+          borderRadius: BorderRadius.all(Radius.circular(AppConstants.borderRadius)),
         ),
-        margin: const EdgeInsets.all(AppConstants.smallPadding),
       ),
       
       // Elevated Button Theme

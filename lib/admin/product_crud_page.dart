@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/product_api_service.dart';
+import '../models/product_model.dart';
 
 class ProductCRUDPage extends StatefulWidget {
   const ProductCRUDPage({super.key});
@@ -11,9 +13,10 @@ class ProductCRUDPage extends StatefulWidget {
 class _ProductCRUDPageState extends State<ProductCRUDPage> {
   bool _isLoading = false;
   String? _error;
-  List<dynamic> _products = [];
+  List<Product> _products = [];
   List<dynamic> _categories = [];
   List<dynamic> _folders = [];
+  final _api = ProductApiService();
   
   // Filter states
   String _selectedCategory = 'all';
@@ -33,35 +36,23 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
     });
 
     try {
-      // Load all data in parallel
+      // Load products from production API; categories/folders via AuthService for now
       final results = await Future.wait([
-        AuthService.getAllProducts(),
+        _api.getProducts(limit: 50),
         AuthService.getProductCategories(),
         AuthService.getProductFolders(),
       ]);
 
-      if (results.every((result) => result['status'] == 'success')) {
-        setState(() {
-          // Parse products data
-          final productsData = results[0]['data'] ?? {};
-          _products = productsData['data']?['products'] ?? productsData['products'] ?? [];
-          
-          // Parse categories data
-          final categoriesData = results[1]['data'] ?? {};
-          _categories = categoriesData['data']?['categories'] ?? categoriesData['categories'] ?? [];
-          
-          // Parse folders data
-          final foldersData = results[2]['data'] ?? {};
-          _folders = foldersData['data']?['folders'] ?? foldersData['folders'] ?? [];
-          
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _error = 'Failed to load data';
-          _isLoading = false;
-        });
-      }
+      final products = results[0] as List<Product>;
+      final categoriesData = (results[1] as Map<String, dynamic>)['data'] ?? {};
+      final foldersData = (results[2] as Map<String, dynamic>)['data'] ?? {};
+
+      setState(() {
+        _products = products;
+        _categories = categoriesData['data']?['categories'] ?? categoriesData['categories'] ?? [];
+        _folders = foldersData['data']?['folders'] ?? foldersData['folders'] ?? [];
+        _isLoading = false;
+      });
     } catch (e) {
       setState(() {
         _error = 'Error loading data: $e';
@@ -250,9 +241,10 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
       );
     }
 
-    return ListView.builder(
+    return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: filteredProducts.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final product = filteredProducts[index];
         return _buildProductCard(product);
@@ -260,69 +252,116 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
     );
   }
 
-  Widget _buildProductCard(dynamic product) {
+  Widget _buildProductCard(Product product) {
+    final image = product.imageUrl;
+    final priceChipColor = (product.priceDifference ?? 0) > 0
+        ? Colors.red[50]
+        : Colors.green[50];
+    final priceTextColor = (product.priceDifference ?? 0) > 0
+        ? Colors.red[700]
+        : Colors.green[700];
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Colors.green[100],
-          child: Icon(
-            Icons.inventory,
-            color: Colors.green[700],
-            size: 20,
-          ),
-        ),
-        title: Text(
-          product['product_name'] ?? 'Unknown Product',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Category: ${product['category_name'] ?? 'N/A'}'),
-            Text('Folder: ${product['folder_name'] ?? 'N/A'}'),
-            Text('SRP: ₱${product['srp']?.toString() ?? 'N/A'}'),
-            Text('Unit: ${product['unit'] ?? 'N/A'}'),
-            if (product['created_at'] != null)
-              Text('Created: ${_formatDate(product['created_at'])}'),
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: image != null && image.isNotEmpty
+                  ? Image.network(
+                      'https://dtisrpmonitoring.bccbsis.com/$image',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(Icons.image_not_supported, color: Colors.grey[400]),
+                    )
+                  : Icon(Icons.inventory_2, color: Colors.grey[400]),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.productName,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        onSelected: (value) => _handleProductAction(value, product),
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'view',
+                            child: Row(children: [Icon(Icons.visibility), SizedBox(width: 8), Text('View Details')]),
+                          ),
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: Row(children: [Icon(Icons.edit), SizedBox(width: 8), Text('Edit')]),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Row(children: [Icon(Icons.delete), SizedBox(width: 8), Text('Delete')]),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _chip(Icons.category, product.categoryName ?? 'Uncategorized'),
+                      if (product.folderName != null && product.folderName!.isNotEmpty)
+                        _chip(Icons.folder, product.folderName!),
+                      _chip(Icons.scale, product.unit ?? 'N/A'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: priceChipColor,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.price_change, size: 16, color: priceTextColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              'SRP ₱${product.srp.toStringAsFixed(2)}',
+                              style: TextStyle(color: priceTextColor, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (product.prevailingPrice != null && product.prevailingPrice! > 0)
+                        Text(
+                          'Prevailing ₱${product.prevailingPrice!.toStringAsFixed(2)}',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) => _handleProductAction(value, product),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'view',
-              child: Row(
-                children: [
-                  Icon(Icons.visibility),
-                  SizedBox(width: 8),
-                  Text('View Details'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit),
-                  SizedBox(width: 8),
-                  Text('Edit'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete),
-                  SizedBox(width: 8),
-                  Text('Delete'),
-                ],
-              ),
-            ),
-          ],
-        ),
-        onTap: () => _showProductDetails(product),
       ),
     );
   }
@@ -336,18 +375,36 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
     }
   }
 
-  List<dynamic> _getFilteredProducts() {
+  Widget _chip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.black54),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(color: Colors.black87)),
+        ],
+      ),
+    );
+  }
+
+  List<Product> _getFilteredProducts() {
     return _products.where((product) {
       // Category filter
       if (_selectedCategory != 'all') {
-        if (product['category_id']?.toString() != _selectedCategory) {
+        if (product.categoryId?.toString() != _selectedCategory) {
           return false;
         }
       }
       
       // Folder filter
       if (_selectedFolder != 'all') {
-        if (product['folder_id']?.toString() != _selectedFolder) {
+        if (product.folderId?.toString() != _selectedFolder) {
           return false;
         }
       }
@@ -355,9 +412,9 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
       // Search filter
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
-        final productName = product['product_name']?.toString().toLowerCase() ?? '';
-        final categoryName = product['category_name']?.toString().toLowerCase() ?? '';
-        final folderName = product['folder_name']?.toString().toLowerCase() ?? '';
+        final productName = product.productName.toLowerCase();
+        final categoryName = (product.categoryName ?? '').toLowerCase();
+        final folderName = (product.folderName ?? '').toLowerCase();
         
         if (!productName.contains(query) && 
             !categoryName.contains(query) && 
@@ -376,7 +433,7 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
     });
   }
 
-  void _handleProductAction(String action, dynamic product) {
+  void _handleProductAction(String action, Product product) {
     switch (action) {
       case 'view':
         _showProductDetails(product);
@@ -390,24 +447,24 @@ class _ProductCRUDPageState extends State<ProductCRUDPage> {
     }
   }
 
-  void _showProductDetails(dynamic product) {
+  void _showProductDetails(Product product) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(product['product_name'] ?? 'Product Details'),
+        title: Text(product.productName),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('Category', product['category_name'] ?? 'N/A'),
-              _buildDetailRow('Folder', product['folder_name'] ?? 'N/A'),
-              _buildDetailRow('SRP', '₱${product['srp']?.toString() ?? 'N/A'}'),
-              _buildDetailRow('Unit', product['unit'] ?? 'N/A'),
-              _buildDetailRow('Description', product['description'] ?? 'N/A'),
-              _buildDetailRow('Created', _formatDate(product['created_at'] ?? '')),
-              if (product['updated_at'] != null)
-                _buildDetailRow('Updated', _formatDate(product['updated_at'])),
+              _buildDetailRow('Category', product.categoryName ?? 'N/A'),
+              _buildDetailRow('Folder', product.folderName ?? 'N/A'),
+              _buildDetailRow('SRP', '₱${product.srp.toStringAsFixed(2)}'),
+              _buildDetailRow('Prevailing', product.prevailingPrice == null ? 'N/A' : '₱${product.prevailingPrice!.toStringAsFixed(2)}'),
+              _buildDetailRow('Unit', product.unit ?? 'N/A'),
+              _buildDetailRow('Created', product.createdAt == null ? 'N/A' : _formatDate(product.createdAt!.toIso8601String())),
+              if (product.updatedAt != null)
+                _buildDetailRow('Updated', _formatDate(product.updatedAt!.toIso8601String())),
             ],
           ),
         ),

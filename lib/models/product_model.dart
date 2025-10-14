@@ -10,6 +10,9 @@ class Product {
   final double? prevailingPrice;
   final String? unit;
   final String? profilePic;
+  final String? imageUrl;
+  final double? priceDifference;
+  final double? priceVariancePercent;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String? categoryName;
@@ -30,6 +33,9 @@ class Product {
     this.prevailingPrice,
     this.unit,
     this.profilePic,
+    this.imageUrl,
+    this.priceDifference,
+    this.priceVariancePercent,
     this.createdAt,
     this.updatedAt,
     this.categoryName,
@@ -52,6 +58,9 @@ class Product {
       prevailingPrice: json['prevailing_price'] != null ? (json['prevailing_price'] as num).toDouble() : null,
       unit: json['unit'],
       profilePic: json['profile_pic'],
+      imageUrl: json['image_url'],
+      priceDifference: json['price_difference'] != null ? (json['price_difference'] as num).toDouble() : null,
+      priceVariancePercent: json['price_variance_percent'] != null ? (json['price_variance_percent'] as num).toDouble() : null,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at']) : null,
       categoryName: json['category_name'],
@@ -75,6 +84,9 @@ class Product {
       'prevailing_price': prevailingPrice,
       'unit': unit,
       'profile_pic': profilePic,
+      'image_url': imageUrl,
+      'price_difference': priceDifference,
+      'price_variance_percent': priceVariancePercent,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'category_name': categoryName,
@@ -124,6 +136,9 @@ class Product {
     double? prevailingPrice,
     String? unit,
     String? profilePic,
+    String? imageUrl,
+    double? priceDifference,
+    double? priceVariancePercent,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? categoryName,
@@ -144,6 +159,9 @@ class Product {
       prevailingPrice: prevailingPrice ?? this.prevailingPrice,
       unit: unit ?? this.unit,
       profilePic: profilePic ?? this.profilePic,
+      imageUrl: imageUrl ?? this.imageUrl,
+      priceDifference: priceDifference ?? this.priceDifference,
+      priceVariancePercent: priceVariancePercent ?? this.priceVariancePercent,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       categoryName: categoryName ?? this.categoryName,
