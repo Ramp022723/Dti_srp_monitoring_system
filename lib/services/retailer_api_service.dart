@@ -3,16 +3,46 @@ import 'package:http/http.dart' as http;
 import '../models/retailer_model.dart';
 
 class RetailerApiService {
-  static const String _baseUrl = 'http://localhost/api/retailer_management.php';
+  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/store_prices.php';
 
-  Map<String, String> get _headers => {
+  Map<String, String> get _jsonHeaders => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
 
-  // Get all retailer products with filters
+  Map<String, String> get _browserLikeGetHeaders => {
+    'Accept': 'application/json, text/plain, */*',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Cache-Control': 'no-cache',
+  };
+
+  // Test API connectivity
+  Future<bool> testConnection() async {
+    try {
+      final uri = Uri.parse(_baseUrl);
+      
+      // Try with browser-like headers first
+      var response = await http.get(uri, headers: _browserLikeGetHeaders);
+      
+      // If 401/403, try without any headers as fallback
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        response = await http.get(uri);
+      }
+      
+      print('Connection test - Status: ${response.statusCode}');
+      print('Connection test - Body: ${response.body}');
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Connection test failed: $e');
+      return false;
+    }
+  }
+
+  // Get all retailer products with filters from store_prices.php API
+  // This method fetches real product data from the database via store_prices.php - no mock/sample data
   Future<List<RetailerProduct>> getRetailerProducts({
-    String? retailerSearch,
+    String? retailerSearch, 
     String? productSearch,
     String? anomalyFilter,
     int? retailerId,
@@ -24,6 +54,9 @@ class RetailerApiService {
     int limit = 20,
   }) async {
     try {
+      print('📊 RetailerApiService: Fetching retailer products from DATABASE...');
+      print('📊 API Endpoint: admin/store_prices.php?action=get_retailer_products');
+      
       Map<String, String> queryParams = {
         'action': 'get_retailer_products',
         'sort_by': sortBy,
@@ -46,22 +79,119 @@ class RetailerApiService {
       if (subFolderId != null) queryParams['sub_folder_id'] = subFolderId.toString();
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      print('📊 Database API URL: $uri');
+      
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
+      
+      print('📊 Database API Response Status: ${response.statusCode}');
+      print('📊 Database API Response Body (first 500 chars): ${response.body.length > 500 ? response.body.substring(0, 500) + '...' : response.body}');
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['products'] as List)
-              .map((product) => RetailerProduct.fromJson(product))
-              .toList();
-        } else {
-          throw Exception(data['message'] ?? 'Failed to fetch retailer products');
+        try {
+          final data = json.decode(response.body);
+          
+          final success = data['success'] ?? false;
+          
+          if (success == true) {
+            print('✅ Successfully retrieved products from DATABASE via store_prices.php');
+            
+            // Handle different response structures from store_prices.php
+            final productsData = data['products'] ?? 
+                                data['data'] ?? 
+                                (data['data'] is Map ? data['data']['products'] : null) ?? 
+                                [];
+            
+            if (productsData is List) {
+              try {
+                final products = productsData
+                    .map((product) {
+                      return RetailerProduct.fromJson(product as Map<String, dynamic>);
+                    })
+                    .toList();
+                
+                print('✅ Successfully parsed ${products.length} products from DATABASE');
+                print('📊 All product data is from store_prices.php API - no mock/sample data used');
+                return products;
+              } catch (e) {
+                print('❌ Error processing products: $e');
+                throw Exception('Error parsing product data from store_prices.php: $e');
+              }
+            } else {
+              print('⚠️ Products data is not a list, returning empty list');
+              return [];
+            }
+          } else {
+            final message = data['message'] ?? 'Failed to fetch retailer products from store_prices.php';
+            print('❌ Database API returned success=false: $message');
+            throw Exception(message);
+          }
+        } catch (e) {
+          print('❌ Error parsing JSON response from store_prices.php: $e');
+          throw Exception('Error parsing API response from store_prices.php: $e');
         }
       } else {
-        throw Exception('Failed to fetch retailer products: ${response.statusCode}');
+        print('❌ Database API returned status code: ${response.statusCode}');
+        throw Exception('Failed to fetch retailer products from store_prices.php: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Error fetching retailer products: $e');
+      print('❌ RetailerApiService: Error fetching retailer products from store_prices.php: $e');
+      print('❌ Error type: ${e.runtimeType}');
+      print('❌ No mock data will be used - only real database data from store_prices.php');
+      throw Exception('Error fetching retailer products from store_prices.php: $e');
+    }
+  }
+
+  // Get store prices from the public store_prices.php endpoint (no action param, returns `prices`)
+  // This method fetches real product prices from the database via store_prices.php - no mock/sample data
+  Future<List<RetailerProduct>> getStorePrices() async {
+    try {
+      print('📊 RetailerApiService: Fetching store prices from DATABASE...');
+      print('📊 API Endpoint: admin/store_prices.php (public endpoint)');
+      
+      final uri = Uri.parse(_baseUrl);
+      print('📊 Database API URL: $uri');
+      
+      // Try with browser-like headers first
+      var response = await http.get(uri, headers: _browserLikeGetHeaders);
+      
+      // If 401/403, try without any headers as fallback
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        response = await http.get(uri);
+      }
+
+      print('📊 Database API Response Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        print('✅ Successfully retrieved store prices from DATABASE via store_prices.php');
+        
+        final data = json.decode(response.body);
+        
+        // Handle different response structures from store_prices.php
+        final prices = data['prices'] ?? 
+                      data['data'] ?? 
+                      (data['data'] is Map ? data['data']['prices'] : null) ?? 
+                      [];
+        
+        if (prices is List) {
+          final products = prices
+              .map((item) => RetailerProduct.fromJson(item as Map<String, dynamic>))
+              .toList();
+          
+          print('✅ Successfully parsed ${products.length} store prices from DATABASE');
+          print('📊 All store prices are from store_prices.php API - no mock/sample data used');
+          return products;
+        }
+        
+        print('⚠️ Prices data is not a list, returning empty list');
+        return [];
+      } else {
+        print('❌ Database API returned status code: ${response.statusCode}');
+        throw Exception('Failed to fetch store prices from store_prices.php: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('❌ RetailerApiService: Error fetching store prices from store_prices.php: $e');
+      print('❌ No mock data will be used - only real database data from store_prices.php');
+      throw Exception('Error fetching store prices from store_prices.php: $e');
     }
   }
 
@@ -83,14 +213,20 @@ class RetailerApiService {
       }
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['retailers'] as List)
-              .map((retailer) => Retailer.fromJson(retailer))
-              .toList();
+        final success = data['success'] ?? false;
+        if (success == true) {
+          final retailersData = data['retailers'] ?? data['data'] ?? [];
+          if (retailersData is List) {
+            return retailersData
+                .map((retailer) => Retailer.fromJson(retailer))
+                .toList();
+          } else {
+            return [];
+          }
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch retailers');
         }
@@ -110,7 +246,7 @@ class RetailerApiService {
     try {
       final response = await http.put(
         Uri.parse(_baseUrl),
-        headers: _headers,
+        headers: _jsonHeaders,
         body: json.encode({
           'action': 'update_price',
           'retail_price_id': retailPriceId,
@@ -154,14 +290,20 @@ class RetailerApiService {
       }
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['alerts'] as List)
-              .map((alert) => ViolationAlert.fromJson(alert))
-              .toList();
+        final success = data['success'] ?? false;
+        if (success == true) {
+          final alertsData = data['alerts'] ?? data['data'] ?? [];
+          if (alertsData is List) {
+            return alertsData
+                .map((alert) => ViolationAlert.fromJson(alert))
+                .toList();
+          } else {
+            return [];
+          }
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch alerts');
         }
@@ -181,7 +323,7 @@ class RetailerApiService {
     try {
       final response = await http.put(
         Uri.parse(_baseUrl),
-        headers: _headers,
+        headers: _jsonHeaders,
         body: json.encode({
           'action': 'update_alert_status',
           'alert_id': alertId,
@@ -219,11 +361,12 @@ class RetailerApiService {
       }
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
+        final success = data['success'] ?? false;
+        if (success == true) {
           return RetailerStats.fromJson(data);
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch stats');
@@ -245,7 +388,7 @@ class RetailerApiService {
     try {
       final response = await http.post(
         Uri.parse(_baseUrl),
-        headers: _headers,
+        headers: _jsonHeaders,
         body: json.encode({
           'action': 'send_violation_notification',
           'retailer_id': retailerId,
@@ -284,7 +427,7 @@ class RetailerApiService {
       }
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -312,7 +455,7 @@ class RetailerApiService {
       }
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final response = await http.get(uri, headers: _browserLikeGetHeaders);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

@@ -275,10 +275,19 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
       final bool forbidden = httpStatus == 403 || code == 'FORBIDDEN';
 
       if (unauthorized || forbidden) {
-        // Hard redirect to login on auth errors
-        await AuthService.logout();
+        // Do not auto-logout; show message and keep user until they choose to logout
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session issue detected. Please logout and login again.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        // Keep displaying cached/empty data rather than forcing logout
+        setState(() {
+          _dashboardData = {};
+          _isLoading = false;
+        });
         return;
       }
 
@@ -544,6 +553,19 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
               ),
             ),
                         ),
+                        const SizedBox(width: 8),
+                        // Explicit Logout button in header
+                        GestureDetector(
+                          onTap: _confirmLogout,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.red.withOpacity(0.08),
+                            ),
+                            child: const Icon(Icons.logout, color: Colors.red),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -687,11 +709,7 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
                                         ),
                                       ),
                                       child: GestureDetector(
-                                        onTap: () async {
-                                          await AuthService.logout();
-                                          if (!mounted) return;
-                                          Navigator.pushReplacementNamed(context, '/login');
-                                        },
+                                        onTap: _confirmLogout,
                                         child: Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
@@ -735,6 +753,32 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await AuthService.logout();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   // Build main content based on active tab

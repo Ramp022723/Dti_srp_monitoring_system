@@ -184,6 +184,16 @@ class Product {
     }
     return productName;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'product_id': productId,
+      'product_name': productName,
+      'brand': brand,
+      'category_id': categoryId,
+      'category_name': categoryName,
+    };
+  }
 }
 
 class Category {
@@ -200,6 +210,13 @@ class Category {
       id: json['id'] ?? 0,
       name: json['name'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+    };
   }
 }
 
@@ -223,6 +240,14 @@ class Location {
   }
 
   String get fullName => '$barangayName, $cityName';
+
+  Map<String, dynamic> toJson() {
+    return {
+      'location_id': locationId,
+      'barangay_name': barangayName,
+      'city_name': cityName,
+    };
+  }
 }
 
 class PriceFreezeStats {

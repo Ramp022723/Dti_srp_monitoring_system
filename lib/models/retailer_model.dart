@@ -30,21 +30,72 @@ class Retailer {
   });
 
   factory Retailer.fromJson(Map<String, dynamic> json) {
+    // Helper to safely get int value from various formats
+    int getIntValue(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      if (value is double) return value.toInt();
+      return 0;
+    }
+    
+    // Helper to safely get double value
+    double getDoubleValue(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) {
+        final sanitized = value.trim();
+        if (sanitized.isEmpty) return 0.0;
+        return double.tryParse(sanitized) ?? 0.0;
+      }
+      return 0.0;
+    }
+    
+    // Get product count - check multiple possible field names to match website exactly
+    final productCount = getIntValue(
+      json['product_count'] ?? 
+      json['products_count'] ?? 
+      json['total_products'] ?? 
+      json['num_products'] ??
+      json['product_total'] ??
+      json['products'] ??
+      0
+    );
+    
+    // Get compliance rate - check multiple possible field names
+    final complianceRate = getDoubleValue(
+      json['compliance_rate'] ?? 
+      json['compliance'] ?? 
+      json['compliance_percentage'] ??
+      json['complianceRate'] ??
+      0.0
+    );
+    
+    // Get violation count - check multiple possible field names
+    final violationCount = getIntValue(
+      json['violation_count'] ?? 
+      json['violations_count'] ?? 
+      json['total_violations'] ??
+      json['num_violations'] ??
+      0
+    );
+    
     return Retailer(
-      retailerId: json['retailer_id'] ?? json['retailer_register_id'] ?? 0,
-      username: json['username'] ?? json['retailer_username'] ?? '',
-      storeName: json['store_name'] ?? '',
-      locationId: json['location_id'],
-      locationName: json['location_name'],
+      retailerId: json['retailer_id'] ?? json['retailer_register_id'] ?? json['id'] ?? 0,
+      username: json['username'] ?? json['retailer_username'] ?? json['user_name'] ?? '',
+      storeName: json['store_name'] ?? json['storeName'] ?? json['name'] ?? '',
+      locationId: json['location_id'] ?? json['locationId'],
+      locationName: json['location_name'] ?? json['locationName'],
       address: json['address'],
-      contactNumber: json['contact_number'],
+      contactNumber: json['contact_number'] ?? json['contactNumber'] ?? json['phone'],
       email: json['email'],
       registeredDate: json['registered_date'] != null
-          ? DateTime.tryParse(json['registered_date'])
-          : null,
-      productCount: json['product_count'] ?? 0,
-      complianceRate: (json['compliance_rate'] ?? 0.0).toDouble(),
-      violationCount: json['violation_count'] ?? 0,
+          ? DateTime.tryParse(json['registered_date'].toString())
+          : (json['registeredDate'] != null ? DateTime.tryParse(json['registeredDate'].toString()) : null),
+      productCount: productCount,
+      complianceRate: complianceRate,
+      violationCount: violationCount,
     );
   }
 
@@ -137,6 +188,17 @@ class RetailerProduct {
   });
 
   factory RetailerProduct.fromJson(Map<String, dynamic> json) {
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) {
+        final sanitized = value.trim();
+        if (sanitized.isEmpty) return 0.0;
+        return double.tryParse(sanitized) ?? 0.0;
+      }
+      return 0.0;
+    }
+
     return RetailerProduct(
       retailPriceId: json['retail_price_id'] ?? 0,
       productId: json['product_id'] ?? 0,
@@ -144,14 +206,14 @@ class RetailerProduct {
       productName: json['product_name'] ?? '',
       brand: json['brand'],
       manufacturer: json['manufacturer'],
-      srp: (json['srp'] ?? 0).toDouble(),
+      srp: parseDouble(json['srp']),
       monitoredPrice: json['monitored_price'] != null
-          ? (json['monitored_price'] as num).toDouble()
+          ? parseDouble(json['monitored_price'])
           : null,
       prevailingPrice: json['prevailing_price'] != null
-          ? (json['prevailing_price'] as num).toDouble()
+          ? parseDouble(json['prevailing_price'])
           : null,
-      currentRetailPrice: (json['current_retail_price'] ?? 0).toDouble(),
+      currentRetailPrice: parseDouble(json['current_retail_price']),
       unit: json['unit'],
       profilePic: json['profile_pic'],
       categoryName: json['category_name'],
@@ -164,8 +226,8 @@ class RetailerProduct {
       subFolderName: json['sub_folder_name'],
       mainFolderId: json['main_folder_id'],
       subFolderId: json['sub_folder_id'],
-      mrp: (json['mrp'] ?? 0).toDouble(),
-      effectiveMrp: (json['effective_mrp'] ?? 0).toDouble(),
+      mrp: parseDouble(json['mrp']),
+      effectiveMrp: parseDouble(json['effective_mrp']),
       mrpStatus: json['mrp_status'] ?? 'within_mrp',
       violationLevel: json['violation_level'] ?? 'compliant',
     );

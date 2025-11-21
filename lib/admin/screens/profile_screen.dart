@@ -378,37 +378,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    
-    final userData = {
-      'admin_id': authProvider.currentUser?.id,
-      'first_name': _firstNameController.text.trim(),
-      'last_name': _lastNameController.text.trim(),
-      'middle_name': _middleNameController.text.trim(),
-      'username': _usernameController.text.trim(),
-    };
-    
-    final result = await authProvider.updateProfile(userData);
-    
+    // Profile updates are not available in this version
     if (mounted) {
-      if (result['success'] == true) {
-        setState(() {
-          _isEditing = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
+      setState(() {
+        _isEditing = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updates are not available in this version'),
+          backgroundColor: Colors.orange,
+        ),
+      );
     }
   }
 }

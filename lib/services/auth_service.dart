@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -4094,6 +4095,7 @@ class AuthService {
     int page = 1,
     int limit = 10,
     String? type,
+     String? status,
   }) async {
     try {
       print('🔍 AuthService: Getting notifications - Page: $page, Limit: $limit');
@@ -4104,6 +4106,7 @@ class AuthService {
             if (page > 1) 'page': page.toString(),
             if (limit != 10) 'limit': limit.toString(),
             if (type != null && type.isNotEmpty) 'type': type,
+            if (status != null && status.isNotEmpty) 'status': status,
           },
         ),
         headers: {
@@ -4138,6 +4141,99 @@ class AuthService {
         'status': 'error',
         'message': 'Connection error: $e',
         'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+
+  /// Mark a specific notification as read
+  static Future<Map<String, dynamic>> markNotificationRead({required int notificationId}) async {
+    try {
+      print('🔄 AuthService: Marking notification as read - ID: $notificationId');
+      
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/notifications.php'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+        },
+        body: jsonEncode({
+          'action': 'mark_read',
+          'notification_id': notificationId,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📊 Mark Notification Read Response Status: ${response.statusCode}');
+      print('📊 Mark Notification Read Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'success',
+          'message': 'Notification marked as read',
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to mark notification as read: ${response.statusCode}',
+          'code': 'MARK_READ_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to mark notification as read: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'NETWORK_ERROR'
+      };
+    }
+  }
+
+  /// Mark all notifications as read
+  static Future<Map<String, dynamic>> markAllNotificationsRead() async {
+    try {
+      print('🔄 AuthService: Marking all notifications as read');
+      
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/notifications.php'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+        },
+        body: jsonEncode({
+          'action': 'mark_all_read',
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📊 Mark All Notifications Read Response Status: ${response.statusCode}');
+      print('📊 Mark All Notifications Read Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'success',
+          'message': 'All notifications marked as read',
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to mark all notifications as read: ${response.statusCode}',
+          'code': 'MARK_ALL_READ_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to mark all notifications as read: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'NETWORK_ERROR'
       };
     }
   }
@@ -4295,6 +4391,148 @@ class AuthService {
     }
   }
 
+  // Update Admin Profile
+  static Future<Map<String, dynamic>> updateAdminProfile(Map<String, dynamic> profileData) async {
+    try {
+      print('🔍 AuthService: Updating admin profile');
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/profile.php'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+        },
+        body: jsonEncode(profileData),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📊 Update Admin Profile API Response Status: ${response.statusCode}');
+      print('📊 Update Admin Profile API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'success',
+          'message': 'Admin profile updated successfully',
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to update admin profile: ${response.statusCode}',
+          'code': 'ADMIN_PROFILE_UPDATE_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to update admin profile: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+
+  // Update Admin Password
+  static Future<Map<String, dynamic>> updateAdminPassword(Map<String, dynamic> passwordData) async {
+    try {
+      print('🔍 AuthService: Updating admin password');
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/change_password.php'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+        },
+        body: jsonEncode(passwordData),
+      ).timeout(const Duration(seconds: 30));
+
+      print('📊 Update Admin Password API Response Status: ${response.statusCode}');
+      print('📊 Update Admin Password API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'success',
+          'message': 'Admin password updated successfully',
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to update admin password: ${response.statusCode}',
+          'code': 'ADMIN_PASSWORD_UPDATE_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to update admin password: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+
+  // Upload Admin Profile Picture
+  static Future<Map<String, dynamic>> uploadAdminProfilePicture(File imageFile) async {
+    try {
+      print('🔍 AuthService: Uploading admin profile picture');
+      
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/admin/upload_profile_picture.php'),
+      );
+      
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'User-Agent': 'login_app/1.0',
+        if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+      });
+      
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'profile_picture',
+          imageFile.path,
+        ),
+      );
+
+      final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('📊 Upload Admin Profile Picture API Response Status: ${response.statusCode}');
+      print('📊 Upload Admin Profile Picture API Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': 'success',
+          'message': 'Admin profile picture uploaded successfully',
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to upload admin profile picture: ${response.statusCode}',
+          'code': 'ADMIN_PROFILE_PICTURE_UPLOAD_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to upload admin profile picture: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+
   // Retailer Codes Management
   static Future<Map<String, dynamic>> getRetailerCodes({
     int page = 1,
@@ -4405,6 +4643,72 @@ class AuthService {
     }
   }
 
+  /// Admin: Create a retailer account/store via server API
+  /// Mirrors website capability at `https://dtisrpmonitoring.bccbsis.com/` admin module
+  /// Required: store_name, owner_name, username, password, location_id
+  /// Optional: email, phone, address, description
+  static Future<Map<String, dynamic>> adminCreateRetailer({
+    required String storeName,
+    required String ownerName,
+    required String username,
+    required String password,
+    required int locationId,
+    String? email,
+    String? phone,
+    String? address,
+    String? description,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/admin/retailers.php');
+
+      final Map<String, dynamic> body = {
+        'action': 'create',
+        'store_name': storeName,
+        'owner_name': ownerName,
+        'username': username,
+        'password': password,
+        'location_id': locationId,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (address != null && address.isNotEmpty) 'address': address,
+        if (description != null && description.isNotEmpty) 'description': description,
+      };
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': (data['success'] == true) ? 'success' : 'error',
+          'message': data['message'] ?? ((data['success'] == true) ? 'Retailer created' : 'Failed to create retailer'),
+          'data': data['data'] ?? data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to create retailer: ${response.statusCode}',
+          'code': 'RETAILER_CREATE_ERROR',
+          'http_status': response.statusCode,
+        };
+      }
+    } catch (e) {
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED',
+      };
+    }
+  }
+
   // Statistics Management
   static Future<Map<String, dynamic>> getStats({
     String? period,
@@ -4467,8 +4771,7 @@ class AuthService {
     try {
       print('🔍 AuthService: Getting store prices - Page: $page, Limit: $limit');
       
-      final response = await http.get(
-        Uri.parse('$baseUrl/admin/store_prices.php').replace(
+      final uri = Uri.parse('$baseUrl/admin/store_prices.php').replace(
           queryParameters: {
             if (page > 1) 'page': page.toString(),
             if (limit != 10) 'limit': limit.toString(),
@@ -4476,14 +4779,21 @@ class AuthService {
             if (storeId != null && storeId.isNotEmpty) 'store_id': storeId,
             if (productId != null && productId.isNotEmpty) 'product_id': productId,
           },
-        ),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'login_app/1.0',
-          if (AuthService.getSessionCookie() != null) 'Cookie': AuthService.getSessionCookie()!,
-        },
-      ).timeout(const Duration(seconds: 30));
+      );
+
+      // Prefer browser-like headers for GET; avoid Content-Type and Cookie
+      const browserHeaders = {
+        'Accept': 'application/json, text/plain, */*',
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Cache-Control': 'no-cache',
+      };
+
+      var response = await http.get(uri, headers: browserHeaders).timeout(const Duration(seconds: 30));
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        // Retry without headers as some servers reject non-browser clients
+        response = await http.get(uri).timeout(const Duration(seconds: 30));
+      }
 
       print('📊 Store Prices API Response Status: ${response.statusCode}');
       print('📊 Store Prices API Response Body: ${response.body}');
@@ -4516,6 +4826,12 @@ class AuthService {
   // ================= PRODUCT FOLDER MANAGEMENT API =================
   
   /// Get all folders (main and sub folders with product counts)
+  /// Get folders from database via db_conn.php
+  /// 
+  /// This method fetches folder data from the database using:
+  /// - API Endpoint: admin/product_folder_management.php?action=folders
+  /// - Database Connection: The PHP endpoint should use db_conn.php for database access
+  /// - All data comes directly from the database - no sample/mock data
   static Future<Map<String, dynamic>> getFolders({
     String? search,
     String type = 'all', // all, main, sub
@@ -4523,18 +4839,25 @@ class AuthService {
     int offset = 0,
   }) async {
     try {
-      print('🔍 AuthService: Getting folders - Type: $type, Limit: $limit');
+      print('🔍 AuthService: Getting folders from DATABASE via db_conn.php');
+      print('🔍 Type: $type, Limit: $limit, Offset: $offset');
+      print('📊 API Endpoint: admin/product_folder_management.php?action=folders');
+      print('📊 Ensure PHP endpoint uses db_conn.php for database connections');
+      
+      final apiUrl = Uri.parse('$baseUrl/admin/product_folder_management.php').replace(
+        queryParameters: {
+          'action': 'folders',
+          if (search != null && search.isNotEmpty) 'search': search,
+          'type': type,
+          'limit': limit.toString(),
+          'offset': offset.toString(),
+        },
+      );
+      
+      print('📊 Full API URL: $apiUrl');
       
       final response = await http.get(
-        Uri.parse('$baseUrl/admin/product_folder_management.php').replace(
-          queryParameters: {
-            'action': 'folders',
-            if (search != null && search.isNotEmpty) 'search': search,
-            'type': type,
-            'limit': limit.toString(),
-            'offset': offset.toString(),
-          },
-        ),
+        apiUrl,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -4544,16 +4867,43 @@ class AuthService {
       ).timeout(const Duration(seconds: 30));
 
       print('📊 Get Folders API Response Status: ${response.statusCode}');
-      print('📊 Get Folders API Response Body: ${response.body}');
+      print('📊 Get Folders API Response Body (first 1000 chars): ${response.body.length > 1000 ? response.body.substring(0, 1000) + '...' : response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return {
-          'status': data['success'] == true ? 'success' : 'error',
-          'message': data['success'] == true ? 'Folders retrieved successfully' : 'Failed to retrieve folders',
-          'data': data,
-        };
+        
+        // Validate response structure
+        if (data['success'] == true) {
+          print('✅ Successfully retrieved folders from DATABASE via db_conn.php');
+          
+          // Check if we have actual folder data
+          final hasData = data['data'] != null || 
+                         data['folders'] != null || 
+                         (data['data'] is Map && (data['data']['folders'] != null || data['data']['data'] != null));
+          
+          if (!hasData) {
+            print('⚠️ WARNING: API returned success=true but no folder data found');
+            print('⚠️ Response structure: ${data.keys.toList()}');
+          } else {
+            print('✅ Folder data found in database response');
+          }
+          
+          return {
+            'status': 'success',
+            'message': 'Folders retrieved successfully from database',
+            'data': data,
+          };
+        } else {
+          print('❌ API returned success=false: ${data['message'] ?? 'Unknown error'}');
+          return {
+            'status': 'error',
+            'message': data['message'] ?? 'Failed to retrieve folders from database',
+            'data': data,
+          };
+        }
       } else {
+        print('❌ API returned HTTP status ${response.statusCode}');
+        print('❌ Response body: ${response.body.substring(0, 500)}');
         return {
           'status': 'error',
           'message': 'Failed to retrieve folders: ${response.statusCode}',
@@ -5463,6 +5813,698 @@ class AuthService {
       }
     } catch (e) {
       print('❌ AuthService: Failed to bulk move products: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+
+  // ================= PRICE MONITORING MANAGEMENT API =================
+  
+  /// Get monitoring data/forms
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_forms
+  static Future<Map<String, dynamic>> getMonitoringData({
+    String? search,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? storeName,
+    int? retailerId,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('🔍 AuthService: Getting monitoring data from database...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_forms');
+      
+      final queryParams = <String, String>{
+        'action': 'get_forms',
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (dateFrom != null) {
+        queryParams['date_from'] = dateFrom.toIso8601String().split('T')[0];
+      }
+      if (dateTo != null) {
+        queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
+      }
+      if (storeName != null && storeName.isNotEmpty) {
+        queryParams['store_name'] = storeName;
+      }
+      if (retailerId != null) {
+        queryParams['retailer_id'] = retailerId.toString();
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: queryParams,
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Monitoring Data API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring data retrieved successfully' : 'Failed to retrieve monitoring data'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve monitoring data: ${response.statusCode}',
+          'code': 'GET_MONITORING_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get monitoring data: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Get specific monitoring form by ID
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_form&id={formId}
+  static Future<Map<String, dynamic>> getMonitoringForm({
+    required int formId,
+  }) async {
+    try {
+      print('🔍 AuthService: Getting monitoring form - ID: $formId');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_form');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {
+            'action': 'get_form',
+            'id': formId.toString(),
+          },
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Monitoring Form API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring form retrieved successfully' : 'Failed to retrieve monitoring form'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve monitoring form: ${response.statusCode}',
+          'code': 'GET_FORM_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get monitoring form: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Create monitoring record/form
+  /// API Endpoint: admin/price_monitoring_management.php?action=create_form
+  static Future<Map<String, dynamic>> createMonitoringRecord({
+    required String storeName,
+    required String representativeName,
+    required String dtiMonitorName,
+    required DateTime monitoringDate,
+    required List<Map<String, dynamic>> products,
+    String? notes,
+    String? location,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      print('📝 AuthService: Creating monitoring record...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=create_form');
+      
+      final requestData = {
+        'store_name': storeName,
+        'representative_name': representativeName,
+        'dti_monitor_name': dtiMonitorName,
+        'monitoring_date': monitoringDate.toIso8601String().split('T')[0],
+        'products': products,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        if (location != null && location.isNotEmpty) 'location': location,
+        if (additionalData != null) ...additionalData,
+      };
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {'action': 'create_form'},
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+        body: jsonEncode(requestData),
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Create Monitoring Record API Response Status: ${response.statusCode}');
+      print('📊 Create Monitoring Record API Response Body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring record created successfully' : 'Failed to create monitoring record'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to create monitoring record: ${response.statusCode}',
+          'code': 'CREATE_MONITORING_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to create monitoring record: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Update monitoring record/form
+  /// API Endpoint: admin/price_monitoring_management.php?action=update_form
+  static Future<Map<String, dynamic>> updateMonitoringRecord({
+    required int formId,
+    String? storeName,
+    String? representativeName,
+    String? dtiMonitorName,
+    DateTime? monitoringDate,
+    List<Map<String, dynamic>>? products,
+    String? notes,
+    String? location,
+    Map<String, dynamic>? additionalData,
+  }) async {
+    try {
+      print('✏️ AuthService: Updating monitoring record - ID: $formId');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=update_form');
+      
+      final requestData = <String, dynamic>{
+        'id': formId,
+      };
+      
+      if (storeName != null) requestData['store_name'] = storeName;
+      if (representativeName != null) requestData['representative_name'] = representativeName;
+      if (dtiMonitorName != null) requestData['dti_monitor_name'] = dtiMonitorName;
+      if (monitoringDate != null) requestData['monitoring_date'] = monitoringDate.toIso8601String().split('T')[0];
+      if (products != null) requestData['products'] = products;
+      if (notes != null) requestData['notes'] = notes;
+      if (location != null) requestData['location'] = location;
+      if (additionalData != null) requestData.addAll(additionalData);
+      
+      final response = await http.put(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {'action': 'update_form'},
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+        body: jsonEncode(requestData),
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Update Monitoring Record API Response Status: ${response.statusCode}');
+      print('📊 Update Monitoring Record API Response Body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring record updated successfully' : 'Failed to update monitoring record'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to update monitoring record: ${response.statusCode}',
+          'code': 'UPDATE_MONITORING_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to update monitoring record: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Delete monitoring record/form
+  /// API Endpoint: admin/price_monitoring_management.php?action=delete_form
+  static Future<Map<String, dynamic>> deleteMonitoringRecord({
+    required int formId,
+  }) async {
+    try {
+      print('🗑️ AuthService: Deleting monitoring record - ID: $formId');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=delete_form');
+      
+      final response = await http.delete(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {
+            'action': 'delete_form',
+            'id': formId.toString(),
+          },
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Delete Monitoring Record API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring record deleted successfully' : 'Failed to delete monitoring record'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to delete monitoring record: ${response.statusCode}',
+          'code': 'DELETE_MONITORING_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to delete monitoring record: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Get monitoring statistics
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_stats
+  static Future<Map<String, dynamic>> getMonitoringStatistics({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? storeName,
+    int? retailerId,
+  }) async {
+    try {
+      print('📊 AuthService: Getting monitoring statistics...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_stats');
+      
+      final queryParams = <String, String>{
+        'action': 'get_stats',
+      };
+      
+      if (dateFrom != null) {
+        queryParams['date_from'] = dateFrom.toIso8601String().split('T')[0];
+      }
+      if (dateTo != null) {
+        queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
+      }
+      if (storeName != null && storeName.isNotEmpty) {
+        queryParams['store_name'] = storeName;
+      }
+      if (retailerId != null) {
+        queryParams['retailer_id'] = retailerId.toString();
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: queryParams,
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Monitoring Statistics API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring statistics retrieved successfully' : 'Failed to retrieve monitoring statistics'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve monitoring statistics: ${response.statusCode}',
+          'code': 'GET_STATS_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get monitoring statistics: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Get store statistics for monitoring
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_store_stats
+  static Future<Map<String, dynamic>> getStoreMonitoringStats({
+    String? search,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('📊 AuthService: Getting store monitoring statistics...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_store_stats');
+      
+      final queryParams = <String, String>{
+        'action': 'get_store_stats',
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: queryParams,
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Store Monitoring Stats API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Store statistics retrieved successfully' : 'Failed to retrieve store statistics'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve store statistics: ${response.statusCode}',
+          'code': 'GET_STORE_STATS_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get store monitoring statistics: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Get product monitoring history
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_product_history
+  static Future<Map<String, dynamic>> getProductMonitoringHistory({
+    String? productName,
+    String? storeName,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      print('📊 AuthService: Getting product monitoring history...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_product_history');
+      
+      final queryParams = <String, String>{
+        'action': 'get_product_history',
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+      
+      if (productName != null && productName.isNotEmpty) {
+        queryParams['product_name'] = productName;
+      }
+      if (storeName != null && storeName.isNotEmpty) {
+        queryParams['store_name'] = storeName;
+      }
+      if (dateFrom != null) {
+        queryParams['date_from'] = dateFrom.toIso8601String().split('T')[0];
+      }
+      if (dateTo != null) {
+        queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: queryParams,
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Product Monitoring History API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Product monitoring history retrieved successfully' : 'Failed to retrieve product monitoring history'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve product monitoring history: ${response.statusCode}',
+          'code': 'GET_PRODUCT_HISTORY_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get product monitoring history: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Export monitoring data
+  /// API Endpoint: admin/price_monitoring_management.php?action=export_data
+  static Future<Map<String, dynamic>> exportMonitoringData({
+    String format = 'json', // json, csv, xlsx
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    String? storeName,
+    int? retailerId,
+  }) async {
+    try {
+      print('📥 AuthService: Exporting monitoring data...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=export_data');
+      
+      final queryParams = <String, String>{
+        'action': 'export_data',
+        'format': format,
+      };
+      
+      if (dateFrom != null) {
+        queryParams['date_from'] = dateFrom.toIso8601String().split('T')[0];
+      }
+      if (dateTo != null) {
+        queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
+      }
+      if (storeName != null && storeName.isNotEmpty) {
+        queryParams['store_name'] = storeName;
+      }
+      if (retailerId != null) {
+        queryParams['retailer_id'] = retailerId.toString();
+      }
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: queryParams,
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 60));
+      
+      print('📊 Export Monitoring Data API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring data exported successfully' : 'Failed to export monitoring data'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to export monitoring data: ${response.statusCode}',
+          'code': 'EXPORT_MONITORING_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to export monitoring data: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Get monitoring form templates
+  /// API Endpoint: admin/price_monitoring_management.php?action=get_templates
+  static Future<Map<String, dynamic>> getMonitoringTemplates() async {
+    try {
+      print('📋 AuthService: Getting monitoring templates...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=get_templates');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {'action': 'get_templates'},
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Get Monitoring Templates API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring templates retrieved successfully' : 'Failed to retrieve monitoring templates'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to retrieve monitoring templates: ${response.statusCode}',
+          'code': 'GET_TEMPLATES_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to get monitoring templates: $e');
+      return {
+        'status': 'error',
+        'message': 'Connection error: $e',
+        'code': 'CONNECTION_FAILED'
+      };
+    }
+  }
+  
+  /// Save monitoring form as template
+  /// API Endpoint: admin/price_monitoring_management.php?action=save_template
+  static Future<Map<String, dynamic>> saveMonitoringTemplate({
+    required String templateName,
+    required String description,
+    required List<Map<String, dynamic>> products,
+  }) async {
+    try {
+      print('💾 AuthService: Saving monitoring template...');
+      print('📊 API Endpoint: admin/price_monitoring_management.php?action=save_template');
+      
+      final requestData = {
+        'template_name': templateName,
+        'description': description,
+        'products': products,
+      };
+      
+      final response = await http.post(
+        Uri.parse('$baseUrl/admin/price_monitoring_management.php').replace(
+          queryParameters: {'action': 'save_template'},
+        ),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'login_app/1.0',
+          if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
+        },
+        body: jsonEncode(requestData),
+      ).timeout(const Duration(seconds: 30));
+      
+      print('📊 Save Monitoring Template API Response Status: ${response.statusCode}');
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'status': data['success'] == true ? 'success' : 'error',
+          'message': data['message'] ?? (data['success'] == true ? 'Monitoring template saved successfully' : 'Failed to save monitoring template'),
+          'data': data,
+        };
+      } else {
+        return {
+          'status': 'error',
+          'message': 'Failed to save monitoring template: ${response.statusCode}',
+          'code': 'SAVE_TEMPLATE_ERROR',
+          'http_status': response.statusCode
+        };
+      }
+    } catch (e) {
+      print('❌ AuthService: Failed to save monitoring template: $e');
       return {
         'status': 'error',
         'message': 'Connection error: $e',
@@ -7098,15 +8140,21 @@ class AuthService {
   }
 
   // Load admin dashboard data using the new admin_dashboard.php API
-  static Future<Map<String, dynamic>> loadAdminDashboard({String? adminId}) async {
+  // Includes automatic retry logic for connection errors
+  static Future<Map<String, dynamic>> loadAdminDashboard({String? adminId, int retryCount = 0}) async {
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(seconds: 2);
+    
     try {
-      print('🔍 AuthService: Loading admin dashboard data');
+      print('🔍 AuthService: Loading admin dashboard data (attempt ${retryCount + 1}/${maxRetries + 1})');
       
       // Build URL with optional admin_id parameter
       String url = '$baseUrl/admin/admin_dashboard.php';
       if (adminId != null) {
         url += '?admin_id=$adminId';
       }
+      
+      print('📊 Admin Dashboard URL: $url');
       
       final response = await http.get(
         Uri.parse(url),
@@ -7116,7 +8164,12 @@ class AuthService {
           'User-Agent': 'login_app/1.0',
           if (getSessionCookie() != null) 'Cookie': getSessionCookie()!,
         },
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Connection timeout after 30 seconds');
+        },
+      );
 
       print('📊 Admin Dashboard API Response Status: ${response.statusCode}');
       print('📊 Admin Dashboard API Response Body: ${response.body}');
@@ -7136,11 +8189,79 @@ class AuthService {
           'http_status': response.statusCode
         };
       }
-    } catch (e) {
-      print('❌ AuthService: Failed to load admin dashboard data: $e');
+    } on TimeoutException catch (e) {
+      print('❌ AuthService: Timeout loading admin dashboard data: $e');
+      
+      // Retry on timeout if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 Retrying in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return loadAdminDashboard(adminId: adminId, retryCount: retryCount + 1);
+      }
+      
       return {
         'success': false,
-        'message': 'Connection error: $e',
+        'message': 'Connection timeout. Please check your internet connection and try again.',
+        'error': 'CONNECTION_TIMEOUT'
+      };
+    } on SocketException catch (e) {
+      print('❌ AuthService: Socket error loading admin dashboard data: $e');
+      
+      // Retry on socket errors if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 Retrying in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return loadAdminDashboard(adminId: adminId, retryCount: retryCount + 1);
+      }
+      
+      // Provide user-friendly error message
+      String errorMessage = 'Unable to connect to server. ';
+      if (e.message.contains('Connection reset')) {
+        errorMessage += 'The connection was reset. Please check your internet connection and try again.';
+      } else if (e.message.contains('Failed host lookup')) {
+        errorMessage += 'Cannot reach server. Please check your internet connection.';
+      } else if (e.message.contains('Network is unreachable')) {
+        errorMessage += 'Network is unreachable. Please check your internet connection.';
+      } else {
+        errorMessage += 'Please check your internet connection and try again.';
+      }
+      
+      return {
+        'success': false,
+        'message': errorMessage,
+        'error': 'CONNECTION_FAILED',
+        'socket_error': e.message,
+      };
+    } on HttpException catch (e) {
+      print('❌ AuthService: HTTP error loading admin dashboard data: $e');
+      return {
+        'success': false,
+        'message': 'Server communication error. Please try again.',
+        'error': 'HTTP_EXCEPTION',
+      };
+    } catch (e) {
+      print('❌ AuthService: Failed to load admin dashboard data: $e');
+      
+      // Retry on other errors if attempts remaining
+      if (retryCount < maxRetries && e.toString().contains('Connection')) {
+        print('🔄 Retrying in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return loadAdminDashboard(adminId: adminId, retryCount: retryCount + 1);
+      }
+      
+      // Provide user-friendly error message
+      String errorMessage = 'Connection error occurred. ';
+      if (e.toString().contains('Connection reset')) {
+        errorMessage += 'The connection was reset by the server. Please try again.';
+      } else if (e.toString().contains('timeout')) {
+        errorMessage += 'Request timed out. Please check your internet connection.';
+      } else {
+        errorMessage += 'Please check your internet connection and try again.';
+      }
+      
+      return {
+        'success': false,
+        'message': errorMessage,
         'error': 'CONNECTION_FAILED'
       };
     }

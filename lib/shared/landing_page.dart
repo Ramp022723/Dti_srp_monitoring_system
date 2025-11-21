@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../widgets/browse_products_widget.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -73,6 +74,28 @@ class _LandingPageState extends State<LandingPage> {
     _pageController.previousPage(
       duration: const Duration(milliseconds: 1000),
       curve: Curves.easeInOut,
+    );
+  }
+
+  void _showBrowseProducts(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text(
+              'Browse Products',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            backgroundColor: Colors.blue[600],
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          body: const BrowseProductsWidget(),
+        ),
+      ),
     );
   }
 
@@ -272,6 +295,16 @@ class _LandingPageState extends State<LandingPage> {
                           },
                         ),
                         ListTile(
+                          leading: const Icon(Icons.shopping_bag, color: Colors.blue),
+                          title: const Text('Browse Products'),
+                          onTap: () {
+                            setState(() {
+                              isMenuOpen = false;
+                            });
+                            _showBrowseProducts(context);
+                          },
+                        ),
+                        ListTile(
                           leading: const Icon(Icons.login, color: Colors.blue),
                           title: const Text('Login'),
                           onTap: () {
@@ -402,6 +435,31 @@ class _LandingPageState extends State<LandingPage> {
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Browse Products Button
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 32, vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            elevation: 4,
+                          ),
+                          onPressed: () {
+                            _showBrowseProducts(context);
+                          },
+                          icon: const Icon(Icons.shopping_bag),
+                          label: Text(
+                            'Browse Products',
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -688,6 +746,16 @@ class _LandingPageState extends State<LandingPage> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('Contact us at dti@example.com')),
                           );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.shopping_bag, color: Colors.blue),
+                        title: const Text('Browse Products'),
+                        onTap: () {
+                          setState(() {
+                            isMenuOpen = false;
+                          });
+                          _showBrowseProducts(context);
                         },
                       ),
                       ListTile(

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/monitoring_model.dart';
 
 class MonitoringApiService {
-  static const String _baseUrl = 'http://localhost/api/price_monitoring_management.php';
+  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/price_monitoring_management.php';
 
   // Headers for all requests
   Map<String, String> get _headers => {

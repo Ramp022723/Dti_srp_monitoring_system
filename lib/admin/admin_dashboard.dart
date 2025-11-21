@@ -54,18 +54,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
         setState(() {
           _dashboardData = result['data'] ?? {};
           _isLoading = false;
+          _error = null;
         });
       } else {
+        // Use the user-friendly error message from AuthService
         setState(() {
           _error = result['message'] ?? 'Failed to load dashboard data';
           _isLoading = false;
         });
       }
     } catch (e) {
+      // Fallback error handling if something unexpected happens
       setState(() {
-        _error = 'Connection error: $e';
+        _error = 'An unexpected error occurred. Please try again.';
         _isLoading = false;
       });
+      print('❌ Admin Dashboard: Unexpected error: $e');
     }
   }
 
@@ -175,7 +179,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     
     return MaterialApp(
       theme: theme,
-      home: Scaffold(
+      home: PopScope(
+        canPop: false,
+        onPopInvoked: (bool didPop) async {
+          if (didPop) return;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Use the Logout button to exit your session.'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        },
+        child: Scaffold(
         backgroundColor: _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB),
         appBar: _buildMobileAppBar(),
         body: _isLoading 
@@ -185,6 +203,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             : _buildMobileContent(),
         bottomNavigationBar: _buildBottomNavigationBar(),
         drawer: _buildMobileDrawer(),
+      ),
       ),
     );
   }
@@ -217,7 +236,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           children: [
             IconButton(
               onPressed: () {
-                // Navigate to notifications
+                Navigator.pushNamed(context, '/admin/notifications');
               },
               icon: Icon(
                 Icons.notifications,
@@ -251,6 +270,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ],
         ),
         const SizedBox(width: 8),
+        // Logout Button
+        IconButton(
+          onPressed: _confirmLogout,
+          icon: Icon(
+            Icons.logout,
+            color: _isDarkMode ? Colors.white : const Color(0xFF1F2937),
+          ),
+          tooltip: 'Logout',
+        ),
       ],
     );
   }
@@ -342,6 +370,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 _buildDrawerItem(
+                  icon: Icons.assignment,
+                  title: 'Monitoring Forms',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/admin/monitoring-forms');
+                  },
+                ),
+                _buildDrawerItem(
                   icon: Icons.ac_unit,
                   title: 'Price Freeze Management',
                   onTap: () {
@@ -350,11 +386,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.people,
-                  title: 'User Management',
+                  icon: Icons.notifications,
+                  title: 'Notifications',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.pushNamed(context, '/admin/user-management');
+                    Navigator.pushNamed(context, '/admin/notifications');
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.settings,
+                  title: 'Settings',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/settings');
                   },
                 ),
                 _buildDrawerItem(
@@ -563,34 +607,69 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   Widget _buildErrorWidget() {
+    // Extract user-friendly error message (remove technical details)
+    String errorMessage = _error ?? 'Unknown error occurred';
+    
+    // Remove technical details if present
+    if (errorMessage.contains('SocketException') || 
+        errorMessage.contains('ClientException') ||
+        errorMessage.contains('Connection reset by peer')) {
+      // Extract meaningful part before technical details
+      final parts = errorMessage.split(':');
+      if (parts.isNotEmpty && !parts.first.contains('Connection error')) {
+        errorMessage = parts.first.trim();
+      }
+      // Ensure we have a user-friendly message
+      if (errorMessage.contains('Connection reset')) {
+        errorMessage = 'Connection was reset. Please check your internet connection.';
+      } else if (errorMessage.contains('Connection error')) {
+        errorMessage = 'Unable to connect to server. Please check your internet connection.';
+      }
+    }
+    
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(
-            'Error Loading Dashboard',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _isDarkMode ? Colors.white : const Color(0xFF1F2937),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              'Error Loading Dashboard',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: _isDarkMode ? Colors.white : const Color(0xFF1F2937),
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _error ?? 'Unknown error occurred',
-            style: TextStyle(
-              color: _isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                errorMessage,
+                style: TextStyle(
+                  color: _isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF6B7280),
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _loadDashboardData,
-            child: const Text('Retry'),
-          ),
-        ],
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadDashboardData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -735,16 +814,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'onTap': () => Navigator.pushNamed(context, '/monitoring'),
       },
       {
+        'title': 'Monitoring Forms',
+        'icon': Icons.assignment,
+        'color': const Color(0xFF10B981),
+        'onTap': () => Navigator.pushNamed(context, '/admin/monitoring-forms'),
+      },
+      {
         'title': 'Price Freeze',
         'icon': Icons.ac_unit,
         'color': const Color(0xFFEF4444),
         'onTap': () => Navigator.pushNamed(context, '/admin/price-freeze'),
-      },
-      {
-        'title': 'User Management',
-        'icon': Icons.people,
-        'color': const Color(0xFF06B6D4),
-        'onTap': () => Navigator.pushNamed(context, '/admin/user-management'),
       },
     ];
 
@@ -1282,6 +1361,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
           const Divider(),
           ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text('Admin Profile'),
+            trailing: const Icon(Icons.arrow_forward_ios),
+            onTap: () => Navigator.pushNamed(context, '/admin/profile'),
+          ),
+          const Divider(),
+          ListTile(
             leading: const Icon(Icons.download),
             title: const Text('Generate Report'),
             trailing: const Icon(Icons.arrow_forward_ios),
@@ -1292,13 +1378,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
             leading: const Icon(Icons.logout),
             title: const Text('Logout'),
             trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              // Handle logout
-            },
+            onTap: _confirmLogout,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await AuthService.logout();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   Widget _buildDashboardTab() {

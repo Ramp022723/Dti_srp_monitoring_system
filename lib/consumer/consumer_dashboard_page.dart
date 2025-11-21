@@ -108,17 +108,33 @@ class _ConsumerDashboardPageState extends State<ConsumerDashboardPage> {
           _priceUpdates = List<Map<String, dynamic>>.from(result['data'] ?? []);
         });
       } else {
-        // Use sample data if API fails
+        // Show error message instead of sample data
+        print('Error loading price updates: ${result['message']}');
         setState(() {
-          _priceUpdates = ConsumerDashboardAPI.getSamplePriceUpdates();
+          _priceUpdates = [];
         });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to load price updates: ${result['message']}'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     } catch (e) {
       print('Error loading price updates: $e');
-      // Use sample data for demo
       setState(() {
-        _priceUpdates = ConsumerDashboardAPI.getSamplePriceUpdates();
+        _priceUpdates = [];
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Connection error loading price updates: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -397,6 +413,11 @@ class _ConsumerDashboardPageState extends State<ConsumerDashboardPage> {
           foregroundColor: Colors.white,
           elevation: 0,
         actions: [
+          IconButton(
+            icon: Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: _confirmLogout,
+          ),
           // Notifications
           Stack(
             children: [
@@ -437,7 +458,7 @@ class _ConsumerDashboardPageState extends State<ConsumerDashboardPage> {
               if (value == 'profile') {
                 _navigateToProfile();
               } else if (value == 'logout') {
-                _logout();
+                _confirmLogout();
               }
             },
             itemBuilder: (BuildContext context) => [
@@ -1289,6 +1310,32 @@ class _ConsumerDashboardPageState extends State<ConsumerDashboardPage> {
   void _logout() async {
     await AuthService.logout();
     Navigator.pushReplacementNamed(context, '/login');
+  }
+
+  Future<void> _confirmLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Logout'),
+        content: Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await AuthService.logout();
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 
   void _navigateToBrowseProducts() {

@@ -10,7 +10,8 @@ class ProductApiService {
     'Accept': 'application/json',
   };
 
-  // Get all products with filters
+  // Get all products with filters from DATABASE
+  // This method fetches real product data from the database via API - no mock/sample data
   Future<List<Product>> getProducts({
     String? search,
     int? categoryId,
@@ -25,12 +26,17 @@ class ProductApiService {
     int limit = 20,
   }) async {
     try {
+      print('📊 ProductApiService: Fetching products from DATABASE...');
+      print('📊 API Endpoint: admin/product_price_management.php');
+      print('📊 Parameters: page=$page, limit=$limit, search=$search, categoryId=$categoryId');
+      
       // Align query parameters with live API
       final Map<String, String> queryParams = {
         'sort_by': sortBy,
         'sort_order': sortOrder,
         'page': page.toString(),
-        'per_page': limit.toString(),
+        // PHP expects `limit` (not per_page)
+        'limit': limit.toString(),
       };
 
       if (search != null && search.isNotEmpty) queryParams['search'] = search;
@@ -42,44 +48,67 @@ class ProductApiService {
       if (subFolderId != null) queryParams['sub_folder_id'] = subFolderId.toString();
 
       final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
+      print('📊 Database API URL: $uri');
+      
       // Use Accept only for GET; omit JSON Content-Type to avoid 405s on some servers
       final response = await http.get(uri, headers: const {'Accept': 'application/json'});
 
+      print('📊 Database API Response Status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true) {
-          // API may return products under data.products, or at root as products
+        final dynamic successFlag = data['success'];
+        final bool isSuccess = successFlag == true || successFlag == 'true' || successFlag == 1;
+        
+        if (isSuccess) {
+          print('✅ Successfully retrieved products from DATABASE');
+          
+          // PHP returns products under data.products
           final List<dynamic> productsList =
               (data['data'] != null && data['data']['products'] is List)
                   ? (data['data']['products'] as List)
-                  : (data['products'] as List? ?? <dynamic>[]);
-          return productsList
+                  : <dynamic>[];
+          
+          final products = productsList
               .map((product) => Product.fromJson(product as Map<String, dynamic>))
               .toList();
+          
+          print('✅ Successfully parsed ${products.length} products from DATABASE');
+          print('📊 All product data is from the database - no mock/sample data used');
+          return products;
         } else {
+          print('❌ Database API returned success=false: ${data['message']}');
           throw Exception(data['message'] ?? 'Failed to fetch products');
         }
       } else {
         final body = response.body.isNotEmpty ? response.body : '';
-        throw Exception('Failed to fetch products: ${response.statusCode} ${body}');
+        print('❌ Database API returned status code: ${response.statusCode}');
+        throw Exception('Failed to fetch products from database: ${response.statusCode} ${body}');
       }
     } catch (e) {
-      throw Exception('Error fetching products: $e');
+      print('❌ ProductApiService: Error fetching products from DATABASE: $e');
+      print('❌ No mock data will be used - only real database data');
+      throw Exception('Error fetching products from database: $e');
     }
   }
 
   // Get single product by ID
   Future<Product> getProduct(int productId) async {
     try {
+      // PHP expects GET with ?id={product_id}
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_product&id=$productId'),
+        Uri.parse('$_baseUrl?id=$productId'),
         headers: _headers,
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return Product.fromJson(data['product']);
+        final dynamic successFlag = data['success'];
+        final bool isSuccess = successFlag == true || successFlag == 'true' || successFlag == 1;
+        if (isSuccess) {
+          // PHP returns the product in data (not product field)
+          final dynamic payload = data['data'] ?? data['product'];
+          return Product.fromJson((payload as Map<String, dynamic>));
         } else {
           throw Exception(data['message'] ?? 'Failed to fetch product');
         }
@@ -272,28 +301,50 @@ class ProductApiService {
     }
   }
 
-  // Get all categories
+  // Get categories from DATABASE
+  // This method fetches real category data from the database via API - no mock/sample data
   Future<List<Category>> getCategories() async {
     try {
+      print('📊 ProductApiService: Fetching categories from DATABASE...');
+      print('📊 API Endpoint: admin/product_price_management.php?action=categories');
+      
+      // PHP endpoint uses action=categories
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_categories'),
+        Uri.parse('$_baseUrl?action=categories'),
         headers: _headers,
       );
 
+      print('📊 Database Categories API Response Status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['categories'] as List)
-              .map((category) => Category.fromJson(category))
-              .toList();
+        final dynamic successFlag = data['success'];
+        final bool isSuccess = successFlag == true || successFlag == 'true' || successFlag == 1;
+        
+        if (isSuccess) {
+          print('✅ Successfully retrieved categories from DATABASE');
+          
+          final List categoriesRaw = (data['data'] != null && data['data']['categories'] is List)
+              ? (data['data']['categories'] as List)
+              : (data['categories'] as List? ?? <dynamic>[]);
+          
+          final categories = categoriesRaw.map((category) => Category.fromJson(category)).toList();
+          
+          print('✅ Successfully parsed ${categories.length} categories from DATABASE');
+          print('📊 All category data is from the database - no mock/sample data used');
+          return categories;
         } else {
+          print('❌ Database Categories API returned success=false: ${data['message']}');
           throw Exception(data['message'] ?? 'Failed to fetch categories');
         }
       } else {
-        throw Exception('Failed to fetch categories: ${response.statusCode}');
+        print('❌ Database Categories API returned status code: ${response.statusCode}');
+        throw Exception('Failed to fetch categories from database: ${response.statusCode}');
       }
     } catch (e) {
-      throw Exception('Error fetching categories: $e');
+      print('❌ ProductApiService: Error fetching categories from DATABASE: $e');
+      print('❌ No mock data will be used - only real database data');
+      throw Exception('Error fetching categories from database: $e');
     }
   }
 

@@ -16,9 +16,8 @@ class RegistrationDebugService {
       
       final url = Uri.parse('$baseUrl/$registerEndpoint');
       
-      // Test with OPTIONS request first
-      final optionsResponse = await http.request(
-        'OPTIONS',
+      // Test with GET request first
+      final optionsResponse = await http.get(
         url,
         headers: {
           'Content-Type': 'application/json',

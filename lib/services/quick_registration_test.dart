@@ -142,8 +142,7 @@ class QuickRegistrationTest {
       
       // Test with OPTIONS request first
       print('📤 Testing OPTIONS request...');
-      final optionsResponse = await http.request(
-        'OPTIONS',
+      final optionsResponse = await http.get(
         url,
         headers: {
           'Content-Type': 'application/json',

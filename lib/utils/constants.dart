@@ -5,8 +5,6 @@ class AppConstants {
   
   // API Endpoints
   static const String loginEndpoint = '/login.php';
-  static const String userManagementEndpoint = '/api_user_management.php';
-  static const String consumerManagementEndpoint = '/consumer_management.php';
   static const String retailerManagementEndpoint = '/retailer_management.php';
   static const String productManagementEndpoint = '/product_management.php';
   static const String complaintManagementEndpoint = '/complaint_management.php';

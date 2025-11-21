@@ -1,14 +1,34 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/price_freeze_model.dart';
 
 class PriceFreezeApiService {
-  static const String _baseUrl = 'http://localhost/api/price_freeze_management.php';
+  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api';
+  static const String _endpoint = '/admin/price_freeze_management.php';
 
-  Map<String, String> get _headers => {
+
+  // Session management
+  static Future<String?> _getSessionCookie() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('PHPSESSID');
+    } catch (e) {
+      print('Error getting session cookie: $e');
+      return null;
+    }
+  }
+
+  // Get headers with session cookie
+  Future<Map<String, String>> _getHeaders() async {
+    final sessionCookie = await _getSessionCookie();
+    return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+      'User-Agent': 'Flutter-App',
+      if (sessionCookie != null) 'Cookie': sessionCookie,
   };
+  }
 
   // Get all alerts
   Future<List<PriceFreezeAlert>> getAlerts({
@@ -20,6 +40,7 @@ class PriceFreezeApiService {
     int limit = 20,
   }) async {
     try {
+      // Use GET with query parameters as the API expects
       Map<String, String> queryParams = {
         'action': 'get_alerts',
         'page': page.toString(),
@@ -35,13 +56,19 @@ class PriceFreezeApiService {
         queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
       }
 
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final uri = Uri.parse('$_baseUrl$_endpoint').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: await _getHeaders());
+
+      print('PriceFreeze API URL: $uri');
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          return (data['alerts'] as List)
+          final alertsData = data['data'] ?? data;
+          final alerts = alertsData['alerts'] as List;
+          return alerts
               .map((alert) => PriceFreezeAlert.fromJson(alert))
               .toList();
         } else {
@@ -59,8 +86,8 @@ class PriceFreezeApiService {
   Future<PriceFreezeAlert> getAlert(int alertId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_alert&id=$alertId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint?action=get_alert&id=$alertId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -82,8 +109,8 @@ class PriceFreezeApiService {
   Future<Map<String, dynamic>> createAlert(CreateAlertRequest request) async {
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint'),
+        headers: await _getHeaders(),
         body: json.encode({
           'action': 'create_alert',
           'data': request.toJson(),
@@ -107,8 +134,8 @@ class PriceFreezeApiService {
   }) async {
     try {
       final response = await http.put(
-        Uri.parse(_baseUrl),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint'),
+        headers: await _getHeaders(),
         body: json.encode({
           'action': 'update_status',
           'alert_id': alertId,
@@ -131,7 +158,7 @@ class PriceFreezeApiService {
     try {
       final response = await http.delete(
         Uri.parse('$_baseUrl?action=delete_alert&id=$alertId'),
-        headers: _headers,
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -159,8 +186,11 @@ class PriceFreezeApiService {
         queryParams['date_to'] = dateTo.toIso8601String().split('T')[0];
       }
 
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final uri = Uri.parse('$_baseUrl$_endpoint').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: await _getHeaders());
+
+      print('Stats response status: ${response.statusCode}');
+      print('Stats response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -186,13 +216,17 @@ class PriceFreezeApiService {
         queryParams['search'] = search;
       }
 
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final uri = Uri.parse('$_baseUrl$_endpoint').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: await _getHeaders());
+
+      print('Products response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          return (data['products'] as List)
+          final productsData = data['data'] ?? data;
+          final products = productsData['products'] as List? ?? [];
+          return products
               .map((product) => Product.fromJson(product))
               .toList();
         } else {
@@ -210,14 +244,18 @@ class PriceFreezeApiService {
   Future<List<Category>> getCategories() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_categories'),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint?action=get_categories'),
+        headers: await _getHeaders(),
       );
+
+      print('Categories response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          return (data['categories'] as List)
+          final categoriesData = data['data'] ?? data;
+          final categories = categoriesData['categories'] as List? ?? [];
+          return categories
               .map((category) => Category.fromJson(category))
               .toList();
         } else {
@@ -235,14 +273,18 @@ class PriceFreezeApiService {
   Future<List<Location>> getLocations() async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_locations'),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint?action=get_locations'),
+        headers: await _getHeaders(),
       );
+
+      print('Locations response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success']) {
-          return (data['locations'] as List)
+          final locationsData = data['data'] ?? data;
+          final locations = locationsData['locations'] as List? ?? [];
+          return locations
               .map((location) => Location.fromJson(location))
               .toList();
         } else {
@@ -260,8 +302,8 @@ class PriceFreezeApiService {
   Future<List<PriceFreezeNotification>> getAlertNotifications(int alertId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl?action=get_alert_notifications&alert_id=$alertId'),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint?action=get_alert_notifications&alert_id=$alertId'),
+        headers: await _getHeaders(),
       );
 
       if (response.statusCode == 200) {
@@ -285,8 +327,8 @@ class PriceFreezeApiService {
   Future<Map<String, dynamic>> resendNotifications(int alertId) async {
     try {
       final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: _headers,
+        Uri.parse('$_baseUrl$_endpoint'),
+        headers: await _getHeaders(),
         body: json.encode({
           'action': 'resend_notifications',
           'alert_id': alertId,
@@ -318,8 +360,8 @@ class PriceFreezeApiService {
         queryParams.addAll(filters.toQueryParameters());
       }
 
-      final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
-      final response = await http.get(uri, headers: _headers);
+      final uri = Uri.parse('$_baseUrl$_endpoint').replace(queryParameters: queryParams);
+      final response = await http.get(uri, headers: await _getHeaders());
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);

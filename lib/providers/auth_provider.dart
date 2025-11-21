@@ -127,51 +127,6 @@ class AuthProvider with ChangeNotifier {
     await _prefs.remove(AppConstants.userDataKey);
   }
   
-  // Update user profile
-  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> userData) async {
-    if (!_isAuthenticated || _authToken == null) {
-      return {'success': false, 'message': 'Not authenticated'};
-    }
-    
-    _isLoading = true;
-    notifyListeners();
-    
-    try {
-      final response = await http.put(
-        Uri.parse('${AppConstants.apiBaseUrl}${AppConstants.userManagementEndpoint}'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_authToken',
-        },
-        body: json.encode(userData),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        if (data['success'] == true) {
-          _currentUser = User.fromJson(data['data']);
-          
-          // Update stored user data
-          await _prefs.setString(AppConstants.userDataKey, json.encode(_currentUser!.toJson()));
-          
-          notifyListeners();
-          return {'success': true, 'message': 'Profile updated successfully'};
-        } else {
-          return {'success': false, 'message': data['error'] ?? 'Update failed'};
-        }
-      } else {
-        return {'success': false, 'message': 'Server error occurred'};
-      }
-    } catch (e) {
-      debugPrint('Update profile error: $e');
-      return {'success': false, 'message': 'Network error occurred'};
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-  
   // Check if user has permission
   bool hasPermission(String permission) {
     if (_currentUser == null) return false;

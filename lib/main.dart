@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'shared/registration_page.dart';
 import 'shared/landing_page.dart';
 import 'shared/user_type_selection_page.dart';
+import 'shared/settings_page.dart';
 
 // Import consumer pages
 import 'consumer/consumer_dashboard.dart';
@@ -32,16 +33,16 @@ import 'admin/product_folders_page.dart';
 import 'admin/price_management_page.dart';
 import 'admin/price_freeze_management_page.dart';
 import 'admin/product_crud_page.dart';
-import 'admin/admin_user_management_page.dart';
 import 'admin/complaints_management_page.dart';
 import 'admin/monitoring.dart';
 import 'admin/products.dart';
-import 'admin/retailer_store_management.dart';
+import 'admin/retailer_store_management_page.dart';
+import 'admin/admin_profile_page.dart';
+import 'admin/notifications_page.dart';
+import 'admin/monitoring_forms_page.dart';
 
 // Import admin screens from main_screen
 import 'admin/screens/dashboard_screen.dart';
-import 'admin/screens/user_management_screen.dart';
-import 'admin/screens/consumer_management_screen.dart';
 import 'admin/screens/retailer_management_screen.dart';
 import 'admin/screens/product_management_screen.dart';
 import 'admin/screens/complaint_management_screen.dart';
@@ -63,6 +64,12 @@ import 'screens/retailers/retailer_store_screen.dart';
 import 'services/auth_service.dart';
 import 'services/dashboard_service.dart';
 
+// Import providers
+import 'providers/theme_provider.dart';
+
+// Import theme
+import 'utils/app_theme.dart';
+
 // Note: Providers, utils, and widgets from main_screen.dart are available 
 // but not used in the current main.dart structure
 // They can be imported when needed for specific screens
@@ -82,8 +89,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        // Add your providers here if they exist
-        // ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
         // ChangeNotifierProvider(create: (_) => AuthProvider(prefs)),
         // ChangeNotifierProvider(create: (_) => UserProvider()),
       ],
@@ -97,29 +103,18 @@ class DTIAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'DTI TACP System',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme(
-          brightness: Brightness.light,
-          primary: Colors.blueAccent, // 15% Blue
-          onPrimary: Colors.white,
-          secondary: Colors.redAccent, // 15% Red
-          onSecondary: Colors.white,
-          error: Colors.red.shade700,
-          onError: Colors.white,
-          background: Colors.white, // 60% White background
-          onBackground: Colors.black,
-          surface: Colors.yellow.shade100, // 10% Yellow accent
-          onSurface: Colors.black,
-        ),
-        useMaterial3: true,
-      ),
-      // Use AuthWrapper as home to handle authentication state
-      home: const AuthWrapper(),
-      // Keep routes for direct navigation
-      routes: {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'DTI TACP System',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeProvider.themeMode,
+          // Use AuthWrapper as home to handle authentication state
+          home: const AuthWrapper(),
+          // Keep routes for direct navigation
+          routes: {
          '/': (context) => const LandingPage(),
         '/user-type-selection': (context) => const UserTypeSelectionPage(),
         // Legacy login route (for backward compatibility)
@@ -161,12 +156,11 @@ class DTIAdminApp extends StatelessWidget {
       '/admin/price-management': (context) => const PriceManagementPage(),
       '/admin/price-freeze': (context) => const PriceFreezeManagementPage(),
       '/admin/product-crud': (context) => const ProductCRUDPage(),
-      '/admin/user-management': (context) => const AdminUserManagementPage(),
-      '/admin/complaints': (context) => const ComplaintsManagementPage(),
+        '/admin/complaints': (context) => const ComplaintsManagementPage(),
+        '/admin/notifications': (context) => const NotificationsPage(),
+        '/admin/profile': (context) => const AdminProfilePage(),
         // Admin screens from main_screen
         '/admin/dashboard-screen': (context) => const DashboardScreen(),
-        '/admin/user-management-screen': (context) => const UserManagementScreen(),
-        '/admin/consumer-management-screen': (context) => const ConsumerManagementScreen(),
         '/admin/retailer-management-screen': (context) => const RetailerManagementScreen(),
         '/admin/product-management-screen': (context) => const ProductManagementScreen(),
         '/admin/complaint-management-screen': (context) => const ComplaintManagementScreen(),
@@ -180,8 +174,10 @@ class DTIAdminApp extends StatelessWidget {
         '/products': (context) => const ProductsScreen(),
         // Note: Product details, create, and analytics use Navigator.push with parameters
         // Retailer store management routes
-        '/retailers/stores': (context) => const RetailerStoreScreen(),
+        '/retailers/stores': (context) => const RetailerStoreManagementPage(),
         // Note: Retailer details, violation alerts, and analytics use Navigator.push
+        // Admin monitoring forms route
+        '/admin/monitoring-forms': (context) => const MonitoringFormsPage(),
         // Retailer sub-pages
         '/retailer/agreements': (context) => const RetailerAgreementPage(),
         '/retailer/product-list': (context) => const RetailerProductListPage(),
@@ -189,6 +185,10 @@ class DTIAdminApp extends StatelessWidget {
         '/retailer/store-products': (context) => const RetailerStoreProductsPage(),
         '/retailer/notifications': (context) => const RetailerNotificationsPage(),
         // Note: RetailerNotificationDetailPage requires parameters, use Navigator.push() instead
+        // Settings route
+        '/settings': (context) => const SettingsPage(),
+      },
+    );
       },
     );
   }
