@@ -413,9 +413,15 @@ class _RetailerDashboardState extends State<RetailerDashboard> {
       canPop: false,
       onPopInvoked: (bool didPop) async {
         if (didPop) return;
-        // Prevent going back to login page
-        // User must use logout button to return to login
-        return;
+        // Prevent back navigation - user must logout to exit
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Use the Logout button in Settings to exit your session.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
       },
       child: Scaffold(
         backgroundColor: Colors.grey[50],

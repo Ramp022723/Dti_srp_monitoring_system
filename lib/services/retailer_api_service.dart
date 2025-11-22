@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/retailer_model.dart';
+import 'auth_service.dart';
 
 class RetailerApiService {
   static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/store_prices.php';
+  static const String _dbConnUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/db_conn.php';
 
   Map<String, String> get _jsonHeaders => {
     'Content-Type': 'application/json',
@@ -16,6 +20,19 @@ class RetailerApiService {
     'Accept-Language': 'en-US,en;q=0.9',
     'Cache-Control': 'no-cache',
   };
+
+  // Get headers with session cookie for authenticated requests
+  Map<String, String> _getAuthenticatedHeaders() {
+    final headers = Map<String, String>.from(_browserLikeGetHeaders);
+    final sessionCookie = AuthService.getSessionCookie();
+    if (sessionCookie != null) {
+      headers['Cookie'] = sessionCookie;
+      print('🔐 RetailerApiService: Including session cookie in request');
+    } else {
+      print('⚠️ RetailerApiService: No session cookie available');
+    }
+    return headers;
+  }
 
   // Test API connectivity
   Future<bool> testConnection() async {
@@ -143,20 +160,35 @@ class RetailerApiService {
 
   // Get store prices from the public store_prices.php endpoint (no action param, returns `prices`)
   // This method fetches real product prices from the database via store_prices.php - no mock/sample data
-  Future<List<RetailerProduct>> getStorePrices() async {
+  Future<List<RetailerProduct>> getStorePrices({int retryCount = 0}) async {
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(seconds: 2);
+    
     try {
-      print('📊 RetailerApiService: Fetching store prices from DATABASE...');
+      print('📊 RetailerApiService: Fetching store prices from DATABASE... (attempt ${retryCount + 1}/${maxRetries + 1})');
       print('📊 API Endpoint: admin/store_prices.php (public endpoint)');
       
       final uri = Uri.parse(_baseUrl);
       print('📊 Database API URL: $uri');
       
-      // Try with browser-like headers first
-      var response = await http.get(uri, headers: _browserLikeGetHeaders);
+      // Try with authenticated headers first
+      var headers = _getAuthenticatedHeaders();
+      var response = await http.get(uri, headers: headers).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Connection timeout after 30 seconds');
+        },
+      );
       
-      // If 401/403, try without any headers as fallback
+      // If 401/403, try with browser-like headers as fallback
       if (response.statusCode == 401 || response.statusCode == 403) {
-        response = await http.get(uri);
+        print('⚠️ RetailerApiService: Got 401/403, trying with browser-like headers...');
+        response = await http.get(uri, headers: _browserLikeGetHeaders).timeout(
+          const Duration(seconds: 30),
+          onTimeout: () {
+            throw TimeoutException('Connection timeout after 30 seconds');
+          },
+        );
       }
 
       print('📊 Database API Response Status: ${response.statusCode}');
@@ -188,8 +220,58 @@ class RetailerApiService {
         print('❌ Database API returned status code: ${response.statusCode}');
         throw Exception('Failed to fetch store prices from store_prices.php: ${response.statusCode} ${response.body}');
       }
+    } on TimeoutException catch (e) {
+      print('⏱️ RetailerApiService: Connection timeout: $e');
+      
+      // Retry on timeout if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 RetailerApiService: Retrying getStorePrices in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getStorePrices(retryCount: retryCount + 1);
+      }
+      
+      print('❌ RetailerApiService: Max retries reached for getStorePrices');
+      throw Exception('Connection timeout. Please check your internet connection and try again.');
+    } on SocketException catch (e) {
+      print('🔌 RetailerApiService: Socket error: $e');
+      
+      // Retry on socket errors if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 RetailerApiService: Retrying getStorePrices in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getStorePrices(retryCount: retryCount + 1);
+      }
+      
+      // Provide user-friendly error message
+      String errorMessage = 'Unable to connect to server. ';
+      if (e.message.contains('Connection reset')) {
+        errorMessage += 'The server closed the connection. Please try again.';
+      } else if (e.message.contains('Failed host lookup')) {
+        errorMessage += 'Cannot reach server. Please check your internet connection.';
+      } else if (e.message.contains('Network is unreachable')) {
+        errorMessage += 'Network is unreachable. Please check your internet connection.';
+      } else {
+        errorMessage += 'Please check your internet connection and try again.';
+      }
+      
+      print('❌ RetailerApiService: Max retries reached for getStorePrices');
+      throw Exception(errorMessage);
+    } on HttpException catch (e) {
+      print('🌐 RetailerApiService: HTTP error: $e');
+      throw Exception('Server communication error. Please try again.');
     } catch (e) {
       print('❌ RetailerApiService: Error fetching store prices from store_prices.php: $e');
+      
+      // Retry on connection-related errors if attempts remaining
+      if (retryCount < maxRetries && 
+          (e.toString().contains('Connection') || 
+           e.toString().contains('Socket') ||
+           e.toString().contains('reset'))) {
+        print('🔄 RetailerApiService: Retrying getStorePrices in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getStorePrices(retryCount: retryCount + 1);
+      }
+      
       print('❌ No mock data will be used - only real database data from store_prices.php');
       throw Exception('Error fetching store prices from store_prices.php: $e');
     }

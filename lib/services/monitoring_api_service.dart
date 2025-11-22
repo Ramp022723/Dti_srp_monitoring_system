@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../models/monitoring_model.dart';
 
 class MonitoringApiService {
-  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/price_monitoring_management.php';
+  static const String _baseUrl = 'https://dtisrpmonitoring.bccbsis.com/api/admin/product_monitoring_api.php';
 
   // Headers for all requests
   Map<String, String> get _headers => {
@@ -67,12 +67,37 @@ class MonitoringApiService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success']) {
-          return (data['forms'] as List)
-              .map((form) => MonitoringForm.fromJson(form))
+        print('📊 Monitoring API Response: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}');
+        
+        // Handle different response structures
+        if (data['success'] == true || data['status'] == 'success') {
+          // Check for different possible data keys
+          List<dynamic> formsList = [];
+          if (data['forms'] != null) {
+            formsList = data['forms'] as List;
+          } else if (data['data'] != null) {
+            if (data['data'] is List) {
+              formsList = data['data'] as List;
+            } else if (data['data']['forms'] != null) {
+              formsList = data['data']['forms'] as List;
+            }
+          } else if (data['results'] != null) {
+            formsList = data['results'] as List;
+          }
+          
+          if (formsList.isEmpty && data['data'] != null && data['data'] is Map) {
+            // Try to extract forms from data object
+            final dataMap = data['data'] as Map<String, dynamic>;
+            if (dataMap['forms'] != null) {
+              formsList = dataMap['forms'] as List;
+            }
+          }
+          
+          return formsList
+              .map((form) => MonitoringForm.fromJson(form is Map<String, dynamic> ? form : {} as Map<String, dynamic>))
               .toList();
         } else {
-          throw Exception(data['message'] ?? 'Failed to fetch monitoring forms');
+          throw Exception(data['message'] ?? data['error'] ?? 'Failed to fetch monitoring forms');
         }
       } else {
         throw Exception('Failed to fetch monitoring forms: ${response.statusCode}');

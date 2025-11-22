@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
-import '../screens/monitoring/monitoring_screen.dart';
+import 'monitoring_page_table.dart';
 import '../screens/monitoring/form_details_screen.dart';
 
 /// Monitoring Module - Integrates price and supply monitoring functionality
 /// This module is part of the Admin and Retailer Store Management features
+/// Uses product_monitoring_api.php for data
 class MonitoringModule {
-  /// Navigate to Monitoring Dashboard
+  /// Navigate to Monitoring Dashboard (Table View)
   static void navigateToMonitoring(BuildContext context) {
-    Navigator.pushNamed(context, '/monitoring');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MonitoringPageTable(),
+      ),
+    );
   }
 
-  /// Navigate to Monitoring Forms List
+  /// Navigate to Monitoring Forms List (Table View)
   static void navigateToMonitoringForms(BuildContext context) {
-    Navigator.pushNamed(context, '/monitoring/forms');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MonitoringPageTable(),
+      ),
+    );
   }
 
   /// Navigate to Create Monitoring Form
@@ -32,12 +43,13 @@ class MonitoringModule {
 }
 
 /// Monitoring Dashboard Widget for Admin
+/// Displays monitoring forms in table format from product_monitoring_api.php
 class MonitoringDashboard extends StatelessWidget {
   const MonitoringDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MonitoringScreen();
+    return const MonitoringPageTable();
   }
 }
 

@@ -114,24 +114,25 @@ class _AdminLoginPageState extends State<AdminLoginPage> with TickerProviderStat
           DashboardService.navigateToDashboard(context, userRole);
         }
       } else {
-        final errorMessage = result['message'] ?? 'Admin login failed';
-        final errorCode = result['code'] ?? 'UNKNOWN_ERROR';
+        final errorMessage = result['message'] ?? 'Login failed. Please try again.';
         
-        print('❌ AdminLoginPage: Login failed - $errorCode: $errorMessage');
+        print('❌ AdminLoginPage: Login failed - ${result['code']}: $errorMessage');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Admin Login Failed: $errorMessage'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
+      print('❌ AdminLoginPage: Exception occurred: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('An error occurred: ${e.toString()}'),
+        const SnackBar(
+          content: Text('Unable to connect to server. Please check your internet connection.'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
         ),
       );
     } finally {

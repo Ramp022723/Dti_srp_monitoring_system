@@ -25,7 +25,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     {'id': 'users', 'title': 'User Management', 'icon': Icons.people},
     {'id': 'complaints', 'title': 'Complaints Management', 'icon': Icons.comment},
     {'id': 'price_freeze', 'title': 'Price Freeze Management', 'icon': Icons.ac_unit},
-    {'id': 'settings', 'title': 'Settings', 'icon': Icons.settings}
   ];
 
   @override
@@ -183,15 +182,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
         canPop: false,
         onPopInvoked: (bool didPop) async {
           if (didPop) return;
+          // Prevent back navigation - user must logout to exit
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Use the Logout button to exit your session.'),
+                content: Text('Use the Logout button in Settings to exit your session.'),
                 duration: Duration(seconds: 2),
               ),
             );
           }
-          return;
         },
         child: Scaffold(
         backgroundColor: _isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB),
@@ -268,16 +267,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ),
               ),
           ],
-        ),
-        const SizedBox(width: 8),
-        // Logout Button
-        IconButton(
-          onPressed: _confirmLogout,
-          icon: Icon(
-            Icons.logout,
-            color: _isDarkMode ? Colors.white : const Color(0xFF1F2937),
-          ),
-          tooltip: 'Logout',
         ),
       ],
     );
@@ -370,14 +359,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   },
                 ),
                 _buildDrawerItem(
-                  icon: Icons.assignment,
-                  title: 'Monitoring Forms',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/admin/monitoring-forms');
-                  },
-                ),
-                _buildDrawerItem(
                   icon: Icons.ac_unit,
                   title: 'Price Freeze Management',
                   onTap: () {
@@ -391,14 +372,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.pushNamed(context, '/admin/notifications');
-                  },
-                ),
-                _buildDrawerItem(
-                  icon: Icons.settings,
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.pushNamed(context, '/settings');
                   },
                 ),
                 _buildDrawerItem(
@@ -422,7 +395,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   title: 'Settings',
                   onTap: () {
                     Navigator.pop(context);
-                    _switchTab('settings');
+                    Navigator.pushNamed(context, '/settings');
                   },
                 ),
               ],
@@ -678,8 +651,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     switch (activeTab) {
       case 'dashboard':
         return _buildMobileDashboard();
-      case 'settings':
-        return _buildSettingsTab();
       default:
         return _buildMobileDashboard();
     }
@@ -766,26 +737,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildSettingsTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Settings',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: _isDarkMode ? Colors.white : const Color(0xFF1F2937),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSettingsCard(),
-        ],
-      ),
-    );
-  }
 
   Widget _buildMobileQuickActions() {
     final quickActions = [
@@ -811,12 +762,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         'title': 'Monitoring',
         'icon': Icons.monitor,
         'color': const Color(0xFFF59E0B),
-        'onTap': () => Navigator.pushNamed(context, '/monitoring'),
-      },
-      {
-        'title': 'Monitoring Forms',
-        'icon': Icons.assignment,
-        'color': const Color(0xFF10B981),
         'onTap': () => Navigator.pushNamed(context, '/admin/monitoring-forms'),
       },
       {
@@ -1335,55 +1280,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget _buildSettingsCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _isDarkMode ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.dark_mode),
-            title: const Text('Dark Mode'),
-            trailing: Switch(
-              value: _isDarkMode,
-              onChanged: (value) => _toggleDarkMode(),
-            ),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Admin Profile'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () => Navigator.pushNamed(context, '/admin/profile'),
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.download),
-            title: const Text('Generate Report'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _generateReport,
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: _confirmLogout,
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<void> _confirmLogout() async {
     final shouldLogout = await showDialog<bool>(

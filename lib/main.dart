@@ -35,6 +35,7 @@ import 'admin/price_freeze_management_page.dart';
 import 'admin/product_crud_page.dart';
 import 'admin/complaints_management_page.dart';
 import 'admin/monitoring.dart';
+import 'admin/monitoring_page_table.dart';
 import 'admin/products.dart';
 import 'admin/retailer_store_management_page.dart';
 import 'admin/admin_profile_page.dart';
@@ -166,8 +167,8 @@ class DTIAdminApp extends StatelessWidget {
         '/admin/complaint-management-screen': (context) => const ComplaintManagementScreen(),
         '/admin/profile-screen': (context) => const ProfileScreen(),
         // Monitoring routes
-        '/monitoring': (context) => const MonitoringScreen(),
-        '/monitoring/forms': (context) => const MonitoringFormsScreen(),
+        '/monitoring': (context) => const MonitoringPageTable(),
+        '/monitoring/forms': (context) => const MonitoringPageTable(),
         '/monitoring/create-form': (context) => const CreateMonitoringFormScreen(),
         // Note: Form details uses Navigator.push with form parameter
         // Products routes

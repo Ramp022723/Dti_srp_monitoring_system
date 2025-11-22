@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/product_model.dart';
 
@@ -24,9 +26,13 @@ class ProductApiService {
     String sortOrder = 'ASC',
     int page = 1,
     int limit = 20,
+    int retryCount = 0,
   }) async {
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(seconds: 2);
+    
     try {
-      print('📊 ProductApiService: Fetching products from DATABASE...');
+      print('📊 ProductApiService: Fetching products from DATABASE... (attempt ${retryCount + 1}/${maxRetries + 1})');
       print('📊 API Endpoint: admin/product_price_management.php');
       print('📊 Parameters: page=$page, limit=$limit, search=$search, categoryId=$categoryId');
       
@@ -51,7 +57,12 @@ class ProductApiService {
       print('📊 Database API URL: $uri');
       
       // Use Accept only for GET; omit JSON Content-Type to avoid 405s on some servers
-      final response = await http.get(uri, headers: const {'Accept': 'application/json'});
+      final response = await http.get(uri, headers: const {'Accept': 'application/json'}).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Connection timeout after 30 seconds');
+        },
+      );
 
       print('📊 Database API Response Status: ${response.statusCode}');
 
@@ -85,8 +96,97 @@ class ProductApiService {
         print('❌ Database API returned status code: ${response.statusCode}');
         throw Exception('Failed to fetch products from database: ${response.statusCode} ${body}');
       }
+    } on TimeoutException catch (e) {
+      print('⏱️ ProductApiService: Connection timeout: $e');
+      
+      // Retry on timeout if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 ProductApiService: Retrying getProducts in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getProducts(
+          search: search,
+          categoryId: categoryId,
+          priceMin: priceMin,
+          priceMax: priceMax,
+          folderId: folderId,
+          mainFolderId: mainFolderId,
+          subFolderId: subFolderId,
+          sortBy: sortBy,
+          sortOrder: sortOrder,
+          page: page,
+          limit: limit,
+          retryCount: retryCount + 1,
+        );
+      }
+      
+      print('❌ ProductApiService: Max retries reached for getProducts');
+      throw Exception('Connection timeout. Please check your internet connection and try again.');
+    } on SocketException catch (e) {
+      print('🔌 ProductApiService: Socket error: $e');
+      
+      // Retry on socket errors if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 ProductApiService: Retrying getProducts in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getProducts(
+          search: search,
+          categoryId: categoryId,
+          priceMin: priceMin,
+          priceMax: priceMax,
+          folderId: folderId,
+          mainFolderId: mainFolderId,
+          subFolderId: subFolderId,
+          sortBy: sortBy,
+          sortOrder: sortOrder,
+          page: page,
+          limit: limit,
+          retryCount: retryCount + 1,
+        );
+      }
+      
+      // Provide user-friendly error message
+      String errorMessage = 'Unable to connect to server. ';
+      if (e.message.contains('Connection reset')) {
+        errorMessage += 'The server closed the connection. Please try again.';
+      } else if (e.message.contains('Failed host lookup')) {
+        errorMessage += 'Cannot reach server. Please check your internet connection.';
+      } else if (e.message.contains('Network is unreachable')) {
+        errorMessage += 'Network is unreachable. Please check your internet connection.';
+      } else {
+        errorMessage += 'Please check your internet connection and try again.';
+      }
+      
+      print('❌ ProductApiService: Max retries reached for getProducts');
+      throw Exception(errorMessage);
+    } on HttpException catch (e) {
+      print('🌐 ProductApiService: HTTP error: $e');
+      throw Exception('Server communication error. Please try again.');
     } catch (e) {
       print('❌ ProductApiService: Error fetching products from DATABASE: $e');
+      
+      // Retry on connection-related errors if attempts remaining
+      if (retryCount < maxRetries && 
+          (e.toString().contains('Connection') || 
+           e.toString().contains('Socket') ||
+           e.toString().contains('reset'))) {
+        print('🔄 ProductApiService: Retrying getProducts in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return getProducts(
+          search: search,
+          categoryId: categoryId,
+          priceMin: priceMin,
+          priceMax: priceMax,
+          folderId: folderId,
+          mainFolderId: mainFolderId,
+          subFolderId: subFolderId,
+          sortBy: sortBy,
+          sortOrder: sortOrder,
+          page: page,
+          limit: limit,
+          retryCount: retryCount + 1,
+        );
+      }
+      
       print('❌ No mock data will be used - only real database data');
       throw Exception('Error fetching products from database: $e');
     }

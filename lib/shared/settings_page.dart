@@ -204,21 +204,24 @@ class _SettingsPageState extends State<SettingsPage> {
                        (themeProvider.isSystemMode && 
                         MediaQuery.of(context).platformBrightness == Brightness.dark);
         
-        return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: const Color(0xFF2563EB),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+        return PopScope(
+          canPop: true, // Allow back navigation to dashboard
+          child: Scaffold(
+            backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+            appBar: AppBar(
+              title: const Text(
+                'Settings',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              backgroundColor: const Color(0xFF2563EB),
+              elevation: 0,
+              iconTheme: const IconThemeData(color: Colors.white),
+              // Back button will work automatically
+            ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -255,6 +258,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ],
               ),
             ),
+          ),
         );
       },
     );

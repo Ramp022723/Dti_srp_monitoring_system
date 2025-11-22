@@ -24,12 +24,15 @@ class DashboardService {
   static void navigateToDashboard(BuildContext context, String role) {
     print('🧭 DashboardService: Navigating to dashboard for role: $role');
     try {
-      Navigator.of(context).pushReplacement(
+      // Use pushNamedAndRemoveUntil to clear entire navigation stack
+      // This prevents users from going back to login/user selection pages
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => getDashboardByRole(role),
         ),
+        (route) => false, // Remove all previous routes
       );
-      print('✅ DashboardService: Navigation successful');
+      print('✅ DashboardService: Navigation successful - navigation stack cleared');
     } catch (e) {
       print('❌ DashboardService: Navigation failed: $e');
     }

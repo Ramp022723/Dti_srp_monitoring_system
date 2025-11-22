@@ -195,9 +195,11 @@ class AuthService {
 
   // ================= ENHANCED LOGIN WITH ROLE-BASED FLOW =================
   static Future<Map<String, dynamic>> login(
-      String username, String password, {String? userType}) async {
+      String username, String password, {String? userType, int retryCount = 0}) async {
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(seconds: 2);
     
-    print('🔐 AuthService: Starting login process for user: $username');
+    print('🔐 AuthService: Starting login process for user: $username (attempt ${retryCount + 1}/${maxRetries + 1})');
     
     try {
       // Step 1: Validate input data
@@ -481,11 +483,71 @@ class AuthService {
         'api_response': data
       };
 
-    } catch (e) {
-      print('💥 AuthService: Exception occurred: $e');
+    } on TimeoutException catch (e) {
+      print('⏱️ AuthService: Connection timeout: $e');
+      
+      // Retry on timeout if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 AuthService: Retrying login in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return login(username, password, userType: userType, retryCount: retryCount + 1);
+      }
+      
       return {
         'status': 'error',
-        'message': 'Connection error: $e. Please check your internet connection and try again.',
+        'message': 'Connection timeout. Please check your internet connection and try again.',
+        'code': 'CONNECTION_TIMEOUT'
+      };
+    } on SocketException catch (e) {
+      print('🔌 AuthService: Socket error: $e');
+      
+      // Retry on socket errors if attempts remaining
+      if (retryCount < maxRetries) {
+        print('🔄 AuthService: Retrying login in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return login(username, password, userType: userType, retryCount: retryCount + 1);
+      }
+      
+      // Provide user-friendly error message based on error type
+      String errorMessage = 'Unable to connect to server. ';
+      if (e.message.contains('Connection reset')) {
+        errorMessage += 'The server closed the connection. Please try again.';
+      } else if (e.message.contains('Failed host lookup')) {
+        errorMessage += 'Cannot reach server. Please check your internet connection.';
+      } else if (e.message.contains('Network is unreachable')) {
+        errorMessage += 'Network is unreachable. Please check your internet connection.';
+      } else {
+        errorMessage += 'Please check your internet connection and try again.';
+      }
+      
+      return {
+        'status': 'error',
+        'message': errorMessage,
+        'code': 'CONNECTION_ERROR'
+      };
+    } on HttpException catch (e) {
+      print('🌐 AuthService: HTTP error: $e');
+      return {
+        'status': 'error',
+        'message': 'Server communication error. Please try again.',
+        'code': 'HTTP_ERROR'
+      };
+    } catch (e) {
+      print('💥 AuthService: Exception occurred: $e');
+      
+      // Retry on connection-related errors if attempts remaining
+      if (retryCount < maxRetries && 
+          (e.toString().contains('Connection') || 
+           e.toString().contains('Socket') ||
+           e.toString().contains('reset'))) {
+        print('🔄 AuthService: Retrying login in ${retryDelay.inSeconds} seconds...');
+        await Future.delayed(retryDelay);
+        return login(username, password, userType: userType, retryCount: retryCount + 1);
+      }
+      
+      return {
+        'status': 'error',
+        'message': 'Unable to connect to server. Please check your internet connection and try again.',
         'code': 'CONNECTION_ERROR'
       };
     }
